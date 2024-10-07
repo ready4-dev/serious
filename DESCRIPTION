@@ -13,8 +13,8 @@ Description: Tools for undertakingtime series analysis of mental health
     the serious package has been made available as part of the process of
     testing and documenting the package.  If you have any questions,
     please contact the authors (matthew.hamilton1@monash.edu).
-License: GPL-3 + file LICENSE
-URL: https://ready4-dev.github.io/serios/,
+License: GPL-3
+URL: https://ready4-dev.github.io/serious/,
     https://github.com/ready4-dev/serious,
     https://ready4-dev.github.io/ready4/
 Encoding: UTF-8
@@ -23,6 +23,7 @@ RoxygenNote: 7.3.2
 Suggests: 
     knitr,
     knitrBootstrap,
+    pkgload,
     rmarkdown,
     testthat
 VignetteBuilder: knitr

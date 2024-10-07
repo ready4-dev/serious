@@ -13,7 +13,7 @@ x <- ready4fun::make_pkg_desc_ls(pkg_title_1L_chr = "Develop, Test and Apply Tim
                                  authors_prsn = c(utils::person(given = "Matthew",family = "Hamilton",email = "matthew.hamilton1@monash.edu", role = c("aut", "cre"), comment = c(ORCID = "0000-0001-7407-9194")),
                                                   utils::person("Monash University", role = c("cph"))
                                  ),
-                                 urls_chr = c("https://ready4-dev.github.io/serios/",
+                                 urls_chr = c("https://ready4-dev.github.io/serious/",
                                               "https://github.com/ready4-dev/serious",
                                               "https://ready4-dev.github.io/ready4/")) %>%
   ready4fun::make_manifest(addl_pkgs_ls = ready4fun::make_addl_pkgs_ls(suggests_chr = c("knitr","knitrBootstrap","rmarkdown")#,
