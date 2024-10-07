@@ -426,34 +426,6 @@ make_sampled_values <- function(roll_back_xx,
   }
   return(sampled_xx)
 }
-make_sampled_values <- function(roll_back_xx,
-                                draws_int,
-                                fail_with_xx = NULL,
-                                filter_cdn_ls = NULL,
-                                variable_1L_chr = character(0)
-){
-  if(!is.null(filter_cdn_ls)){
-    sampled_xx <- purrr::reduce(1:length(filter_cdn_ls),
-                                .init = roll_back_xx,
-                                ~ {
-                                  value_1L_xx <- filter_cdn_ls[[.y]]
-
-                                  .x %>%
-                                    dplyr::filter(!!rlang::sym(names(filter_cdn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
-                                }
-    ) %>%
-      dplyr::pull(!!rlang::sym(variable_1L_chr)) %>% purrr::pluck(1)
-  }else{
-    sampled_xx <- roll_back_xx
-  }
-  if(!is.null(sampled_xx)){
-    sampled_xx <- sampled_xx %>% purrr::pmap(~rep(..1,..2)) %>% purrr::flatten() %>% unlist() %>%
-      sample(size = draws_int, replace = TRUE)
-  }else{
-    sampled_xx <- fail_with_xx
-  }
-  return(sampled_xx)
-}
 make_sampling_lup <- function(shares_dbl,
                               values_xx,
                               var_nm_1L_chr,
