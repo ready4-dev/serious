@@ -401,17 +401,17 @@ make_roll_back_lup <- function(data_xx,
 make_sampled_values <- function(roll_back_xx,
                                 draws_int,
                                 fail_with_xx = NULL,
-                                filter_cndn_ls = NULL,
+                                filter_cdn_ls = NULL,
                                 variable_1L_chr = character(0)
 ){
-  if(!is.null(filter_cndn_ls)){
-    sampled_xx <- purrr::reduce(1:length(filter_cndn_ls),
+  if(!is.null(filter_cdn_ls)){
+    sampled_xx <- purrr::reduce(1:length(filter_cdn_ls),
                                 .init = roll_back_xx,
                                 ~ {
-                                  value_1L_xx <- filter_cndn_ls[[.y]]
+                                  value_1L_xx <- filter_cdn_ls[[.y]]
 
                                   .x %>%
-                                    dplyr::filter(!!rlang::sym(names(filter_cndn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
+                                    dplyr::filter(!!rlang::sym(names(filter_cdn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
                                 }
     ) %>%
       dplyr::pull(!!rlang::sym(variable_1L_chr)) %>% purrr::pluck(1)
@@ -429,17 +429,17 @@ make_sampled_values <- function(roll_back_xx,
 make_sampled_values <- function(roll_back_xx,
                                 draws_int,
                                 fail_with_xx = NULL,
-                                filter_cndn_ls = NULL,
+                                filter_cdn_ls = NULL,
                                 variable_1L_chr = character(0)
 ){
-  if(!is.null(filter_cndn_ls)){
-    sampled_xx <- purrr::reduce(1:length(filter_cndn_ls),
+  if(!is.null(filter_cdn_ls)){
+    sampled_xx <- purrr::reduce(1:length(filter_cdn_ls),
                                 .init = roll_back_xx,
                                 ~ {
-                                  value_1L_xx <- filter_cndn_ls[[.y]]
+                                  value_1L_xx <- filter_cdn_ls[[.y]]
 
                                   .x %>%
-                                    dplyr::filter(!!rlang::sym(names(filter_cndn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
+                                    dplyr::filter(!!rlang::sym(names(filter_cdn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
                                 }
     ) %>%
       dplyr::pull(!!rlang::sym(variable_1L_chr)) %>% purrr::pluck(1)
