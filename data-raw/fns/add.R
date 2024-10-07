@@ -211,7 +211,7 @@ add_episodes <- function(data_xx,
                                          setdiff(names(X_Ready4useDyad@ds_tb), c(uid_1L_chr, date_var_1L_chr, activity_var_1L_chr, episodes_vars_chr[2], metrics_chr, c(episodes_vars_chr[3], episodes_vars_chr[1]), paste0(prefix_1L_chr, c(metrics_chr, episodes_vars_chr[2:3])), temporal_vars_chr)),
                                          c(activity_var_1L_chr, episodes_vars_chr[2], metrics_chr, c(episodes_vars_chr[3], episodes_vars_chr[1]), paste0(prefix_1L_chr, c(episodes_vars_chr[2], metrics_chr, episodes_vars_chr[3])), temporal_vars_chr))))
     if(inherits(data_xx,"Ready4useDyad")){
-      X_Ready4useDyad <- add_dictionary(X_Ready4useDyad,
+      X_Ready4useDyad <- ready4use::add_dictionary(X_Ready4useDyad,
                                         new_cases_r3 = ready4use::ready4use_dictionary(ready4use::make_pt_ready4use_dictionary(var_nm_chr = c(episodes_vars_chr, paste0(prefix_1L_chr, episodes_vars_chr[2:3])),
                                                                                                                                var_ctg_chr = ready4::get_from_lup_obj(X_Ready4useDyad@dictionary_r3, match_var_nm_1L_chr = "var_nm_chr", match_value_xx = metrics_chr[1], target_var_nm_1L_chr = "var_ctg_chr"),
                                                                                                                                var_desc_chr = c(episodes_vars_chr,paste0(prefix_1L_chr, episodes_vars_chr[2:3])),
