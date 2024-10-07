@@ -10,7 +10,7 @@
 [![CRAN status](https://www.r-pkg.org/badges/version/serious)](https://CRAN.R-project.org/package=serious)
 <!-- badges: end -->
 
-Tools for undertakingtime series analysis of mental health
+Tools for undertaking time series analysis of mental health
 services datasets developed with the ready4 framework
 (https://ready4-dev.github.io/ready4/).  This development version of
 the serious package has been made available as part of the process of

@@ -7,11 +7,11 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Tools for undertakingtime series analysis of mental health services datasets developed with the ready4 framework (https://ready4-dev.github.io/ready4/). This development version of the serious package has been made available as part of the process of testing and documenting the package. If you have any questions, please contact the authors (matthew.hamilton1@monash.edu).
+Tools for undertaking time series analysis of mental health services datasets developed with the ready4 framework (https://ready4-dev.github.io/ready4/). This development version of the serious package has been made available as part of the process of testing and documenting the package. If you have any questions, please contact the authors (matthew.hamilton1@monash.edu).
 
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Tools for undertakingtime series analysis of mental health services datasets developed with the ready4 framework (https://ready4-dev.github.io/ready4/). This development version of the serious package has been made available as part of the process of testing and documenting the package. If you have any questions, please contact the authors (matthew.hamilton1@monash.edu).
+Tools for undertaking time series analysis of mental health services datasets developed with the ready4 framework (https://ready4-dev.github.io/ready4/). This development version of the serious package has been made available as part of the process of testing and documenting the package. If you have any questions, please contact the authors (matthew.hamilton1@monash.edu).
 }
 \seealso{
 Useful links:
