@@ -90,7 +90,7 @@ make_erp_ds <- function(erp_raw_tb,
       dplyr::ungroup()
   }
   if(as_dyad_1L_lgl){
-    erp_xx <- ready4use::Ready4useDyad(ds_tb = erp_tb) %>% add_dictionary(var_ctg_chr = var_ctg_chr)
+    erp_xx <- ready4use::Ready4useDyad(ds_tb = erp_tb) %>% ready4use::add_dictionary(var_ctg_chr = var_ctg_chr)
   } else{
     erp_xx <- erp_tb
   }
@@ -168,7 +168,7 @@ make_medicare_ds <- function(mbs_raw_tb = get_medicare_data(clean_1L_lgl = TRUE)
   if(as_dyad_1L_lgl){
     keys_1L_int <- c(rename_provider_to_1L_chr, key_vars_chr) %>% unique() %>% length()
     var_ctg_chr <- c("Temporal", rep("Key", times = keys_1L_int), rep("Metric", times = length(names(mbs_tb))-keys_1L_int-1))
-    mbs_xx <- ready4use::Ready4useDyad(ds_tb = mbs_tb) %>% add_dictionary(var_ctg_chr = var_ctg_chr)
+    mbs_xx <- ready4use::Ready4useDyad(ds_tb = mbs_tb) %>% ready4use::add_dictionary(var_ctg_chr = var_ctg_chr)
   } else{
     mbs_xx <- mbs_tb
   }
@@ -297,7 +297,7 @@ make_retainers <- function(retainers_tb,
   }
   if(dyad_1L_lgl){
     data_xx <- Ready4useDyad(ds_tb = data_xx) %>%
-      add_dictionary(var_ctg_chr = "Temporal")
+      ready4use::add_dictionary(var_ctg_chr = "Temporal")
     #c("Temporal",rep("Metrics",ncol(data_xx)-1))
     data_xx@dictionary_r3 <- data_xx@dictionary_r3 %>%
       dplyr::mutate(var_ctg_chr = dplyr::case_when(var_nm_chr %in% c("Clinicians", "Retainer", "CumulativeRetainer", "CumulativeClinicians") ~ "Metrics",
@@ -407,45 +407,17 @@ make_roll_back_lup <- function(data_xx,
 make_sampled_values <- function(roll_back_xx,
                                 draws_int,
                                 fail_with_xx = NULL,
-                                filter_cndn_ls = NULL,
+                                filter_cdn_ls = NULL,
                                 variable_1L_chr = character(0)
 ){
-  if(!is.null(filter_cndn_ls)){
-    sampled_xx <- purrr::reduce(1:length(filter_cndn_ls),
+  if(!is.null(filter_cdn_ls)){
+    sampled_xx <- purrr::reduce(1:length(filter_cdn_ls),
                                 .init = roll_back_xx,
                                 ~ {
-                                  value_1L_xx <- filter_cndn_ls[[.y]]
+                                  value_1L_xx <- filter_cdn_ls[[.y]]
 
                                   .x %>%
-                                    dplyr::filter(!!rlang::sym(names(filter_cndn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
-                                }
-    ) %>%
-      dplyr::pull(!!rlang::sym(variable_1L_chr)) %>% purrr::pluck(1)
-  }else{
-    sampled_xx <- roll_back_xx
-  }
-  if(!is.null(sampled_xx)){
-    sampled_xx <- sampled_xx %>% purrr::pmap(~rep(..1,..2)) %>% purrr::flatten() %>% unlist() %>%
-      sample(size = draws_int, replace = TRUE)
-  }else{
-    sampled_xx <- fail_with_xx
-  }
-  return(sampled_xx)
-}
-make_sampled_values <- function(roll_back_xx,
-                                draws_int,
-                                fail_with_xx = NULL,
-                                filter_cndn_ls = NULL,
-                                variable_1L_chr = character(0)
-){
-  if(!is.null(filter_cndn_ls)){
-    sampled_xx <- purrr::reduce(1:length(filter_cndn_ls),
-                                .init = roll_back_xx,
-                                ~ {
-                                  value_1L_xx <- filter_cndn_ls[[.y]]
-
-                                  .x %>%
-                                    dplyr::filter(!!rlang::sym(names(filter_cndn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
+                                    dplyr::filter(!!rlang::sym(names(filter_cdn_ls)[.y]) %>% purrr::map_lgl(~identical(.x,value_1L_xx)))
                                 }
     ) %>%
       dplyr::pull(!!rlang::sym(variable_1L_chr)) %>% purrr::pluck(1)

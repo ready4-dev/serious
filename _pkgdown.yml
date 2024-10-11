@@ -1,0 +1,22 @@
+url: https://ready4-dev.github.io/serious/
+
+template:
+  bootstrap: 5
+  bootswatch: journal
+
+home:
+  links:
+  - text: Manual - User (PDF)
+    href: https://github.com/ready4-dev/serious/releases/download/Documentation_0.0/serious_User.pdf
+  - text: Manual - Developer (PDF)
+    href: https://github.com/ready4-dev/serious/releases/download/Documentation_0.0/serious_Developer.pdf
+  - text: Framework
+    href:  https://ready4-dev.github.io/ready4/
+development:
+  mode: auto
+reference:
+- title: "Functions"
+- contents:
+  - get_tsibble
+  - make_ts_models
+  - transform_to_tsibble
