@@ -55,6 +55,26 @@ transform_age_groups <- function(data_tb,
     })
   return(data_tb)
 }
+transform_data_fmt <- function(data_xx,
+                               X_Ready4useDyad = ready4use::Ready4useDyad(),
+                               type_1L_chr = c("output", "input")){
+  type_1L_chr <- match.arg(type_1L_chr)
+  if(type_1L_chr == "input"){
+    if (!inherits(data_xx, "Ready4useDyad")) {
+      data_xx <- ready4use::Ready4useDyad(ds_tb = data_xx) %>%
+        ready4use::add_dictionary()
+    }
+  }else{
+    if (inherits(data_xx, "Ready4useDyad")) {
+      X_Ready4useDyad@dictionary_r3 <- dplyr::filter(X_Ready4useDyad@dictionary_r3, var_nm_chr %in% names(X_Ready4useDyad@ds_tb))
+      X_Ready4useDyad@dictionary_r3 <- X_Ready4useDyad@dictionary_r3 %>% dplyr::filter(!duplicated(var_nm_chr))
+      data_xx <- X_Ready4useDyad
+    }  else {
+      data_xx <- X_Ready4useDyad@ds_tb
+    }
+  }
+  return(data_xx)
+}
 transform_output <- function(output_ls){
   output_ls <- output_ls %>%
     purrr::map(~ifelse(is.null(.x),0,.x)) %>%
@@ -73,7 +93,7 @@ transform_to_shorthand <- function(data_tb,
     data_tb <- tsibble::as_tibble(data_tb)
   }
   if(nrow(x_ready4show_correspondences)==0){
-    x_ready4show_correspondences <- make_correspondences(data_tb, key_1L_chr = key_1L_chr, min_1L_int = min_1L_int, original_xx = original_xx)
+    x_ready4show_correspondences <- make_new_correspondences(data_tb, key_1L_chr = key_1L_chr, min_1L_int = min_1L_int, original_xx = original_xx)
   }
   if(!identical(original_xx, character(0))){
     rename_chr <- match(names(data_tb), x_ready4show_correspondences$old_nms_chr)

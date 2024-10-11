@@ -13,25 +13,6 @@ make_age_bands_lup <- function(bands_chr,
   }
   return(age_bands_lup)
 }
-make_correspondences <- function(data_tb = NULL,
-                                 key_1L_chr = character(0),
-                                 min_1L_int = 3L,
-                                 original_xx = character(0)){
-  if(identical(original_xx, character(0))){
-    original_xx <- data_tb %>% dplyr::pull(!!rlang::sym(key_1L_chr)) %>%
-      unique() %>% sort()
-  }
-  if(is.character(original_xx)){
-    abbreviations_chr <- original_xx %>% stringr::str_trim() %>% abbreviate(minlength = min_1L_int)
-  }else{
-    original_xx <- original_xx %>% as.character()
-    abbreviations_chr <- original_xx
-  }
-  x_ready4show_correspondences <- ready4show::ready4show_correspondences() %>%
-    ready4show::renew.ready4show_correspondences(old_nms_chr = original_xx,
-                                                 new_nms_chr = unname(abbreviations_chr))
-  return(x_ready4show_correspondences)
-}
 make_cumulatives <- function(prefix_1L_chr = "Cumulative",
                              separation_after_dbl = numeric(0)){
   episodes_vars_chr <- make_metric_vars("eoc", separation_after_dbl = separation_after_dbl) %>% sort()
@@ -115,7 +96,7 @@ make_erp_ds <- function(erp_raw_tb,
   }
   return(erp_xx)
 }
-make_medicare_ds <- function(mbs_raw_tb,
+make_medicare_ds <- function(mbs_raw_tb = get_medicare_data(clean_1L_lgl = TRUE),
                              as_dyad_1L_lgl = TRUE,
                              erp_tb = NULL,
                              age_bands_lup = NULL,
@@ -147,6 +128,12 @@ make_medicare_ds <- function(mbs_raw_tb,
                            names_from_1L_chr = names_from_1L_chr,
                            rename_to_1L_chr = rename_age_to_1L_chr,
                            values_to_1L_chr = values_to_1L_chr)
+  }else{
+    mbs_tb <- mbs_tb %>%
+      dplyr::rename(!!rlang::sym(rename_provider_to_1L_chr) := !!rlang::sym(provider_var_1L_chr),
+                    !!rlang::sym(rename_age_to_1L_chr) := !!rlang::sym(age_group_var_1L_chr)) %>%
+      tidyr::pivot_wider(names_from = names_from_1L_chr,
+                         values_from = values_to_1L_chr) ## PICK UP HERE RETURNING LIST COLS
   }
   mbs_tb <- make_metrics_summary(mbs_tb,
                                  index_1L_chr = index_1L_chr,
@@ -217,6 +204,25 @@ make_metrics_summary <- function(data_tb,
                                                        key_vars_chr)))) %>%
     dplyr::summarise(dplyr::across(tidyselect::all_of(metrics_chr), ~sum(.x, na.rm = T)), .groups = 'drop')
   return(summary_tb)
+}
+make_new_correspondences <- function(data_tb = NULL,
+                                     key_1L_chr = character(0),
+                                     min_1L_int = 3L,
+                                     original_xx = character(0)){
+  if(identical(original_xx, character(0))){
+    original_xx <- data_tb %>% dplyr::pull(!!rlang::sym(key_1L_chr)) %>%
+      unique() %>% sort()
+  }
+  if(is.character(original_xx)){
+    abbreviations_chr <- original_xx %>% stringr::str_trim() %>% abbreviate(minlength = min_1L_int)
+  }else{
+    original_xx <- original_xx %>% as.character()
+    abbreviations_chr <- original_xx
+  }
+  x_ready4show_correspondences <- ready4show::ready4show_correspondences() %>%
+    ready4show::renew.ready4show_correspondences(old_nms_chr = original_xx,
+                                                 new_nms_chr = unname(abbreviations_chr))
+  return(x_ready4show_correspondences)
 }
 make_retainers <- function(retainers_tb,
                            as_tsibble_1L_lgl = FALSE,
@@ -467,54 +473,176 @@ make_sampling_lup <- function(shares_dbl,
     dplyr::select(!!rlang::sym(uid_var_nm_1L_chr), dplyr::everything())
   return(sampling_lup)
 }
-make_summary_ds <- function(data_xx,
-                            join_before_dtm = NULL,
-                            max_tenure_1L_dbl = numeric(0),
-                            prefix_1L_chr = "Cumulative",
-                            separation_after_dbl = numeric(0)){
-  if(inherits(data_xx,"Ready4useDyad")){
-    X_Ready4useDyad <- data_xx
-  }else{
-    X_Ready4useDyad <- ready4use::Ready4useDyad(ds_tb = data_xx)
+make_service_summary <- function(data_xx,
+                                 active_base_1L_chr = "Active",
+                                 max_periods_1L_int = integer(0),
+                                 metrics_chr = character(0),
+                                 metric_var_1L_chr = "Appointments",
+                                 missing_val_1L_dbl = 0,
+                                 patterns_ls = NULL,
+                                 period_ctg_1L_chr = "Temporal",
+                                 period_var_1L_chr = "Period",
+                                 prefix_1L_chr = "",
+                                 service_var_1L_chr = "Service",
+                                 summary_fn = sum,
+                                 tenure_var_1L_chr = "Tenure",
+                                 uid_1L_chr = "UID",
+                                 update_desc_1L_lgl = TRUE,
+                                 var_ctg_chr = "Summary"){
+  X_Ready4useDyad <- transform_data_fmt(data_xx,
+                                        type_1L_chr = "input")
+  X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>% dplyr::select(c(uid_1L_chr, service_var_1L_chr, metric_var_1L_chr)) %>%
+    tidyr::pivot_wider(names_from = service_var_1L_chr, values_from = metric_var_1L_chr, values_fn = summary_fn, values_fill = missing_val_1L_dbl, names_prefix = prefix_1L_chr)
+  X_Ready4useDyad <- X_Ready4useDyad %>%
+    ready4use::add_dictionary(var_ctg_chr = var_ctg_chr)
+  if(!is.null(patterns_ls)){
+    X_Ready4useDyad <- ready4use::update_column_names(X_Ready4useDyad, patterns_ls = patterns_ls, update_desc_1L_lgl = update_desc_1L_lgl)
   }
-  active_vars_chr <- make_metric_vars("eoc", separation_after_dbl = separation_after_dbl) %>% purrr::keep(~startsWith(.,"Active"))
-  # episodes_vars_chr <- make_metric_vars("eoc", separation_after_dbl = separation_after_dbl) %>% sort()
-  # active_vars_chr <- episodes_vars_chr[startsWith(episodes_vars_chr,"Active")]
-  # cumulatives_chr <- paste0(prefix_1L_chr, c(episodes_vars_chr[startsWith(episodes_vars_chr,"Episodes")],
-  #                      c("Appointments", "Cancellations", "Referrals", "Cost"),
-  #                      episodes_vars_chr[startsWith(episodes_vars_chr,"Separations")]))
-  cumulatives_chr <- make_cumulatives(prefix_1L_chr = prefix_1L_chr,
-                                      separation_after_dbl = separation_after_dbl)
-  if(!identical(max_tenure_1L_dbl, numeric(0))){
+  if(!identical(metrics_chr, character(0))){
+    Y_Ready4useDyad <- transform_data_fmt(data_xx,
+                                          type_1L_chr = "input")
+    metrics_chr <- intersect(metrics_chr %>% purrr::discard(~startsWith(., active_base_1L_chr)), names(Y_Ready4useDyad@ds_tb))
+    Y_Ready4useDyad <- Z_Ready4useDyad <- add_period(Y_Ready4useDyad,
+                                                     period_ctg_1L_chr = period_ctg_1L_chr,
+                                                     period_var_1L_chr = period_var_1L_chr,
+                                                     tenure_var_1L_chr = tenure_var_1L_chr)
+    Y_Ready4useDyad <- renewSlot(Y_Ready4useDyad,"ds_tb",
+                                 Y_Ready4useDyad@ds_tb %>%
+                                   dplyr::group_by(dplyr::pick(tidyselect::all_of(c(uid_1L_chr, period_var_1L_chr)))) %>%
+                                   dplyr::summarise(dplyr::across(tidyselect::any_of(metrics_chr), sum)) %>%
+                                   dplyr::ungroup()
+    )
+    periods_xx <- Z_Ready4useDyad@ds_tb %>% dplyr::pull(!!rlang::sym(period_var_1L_chr)) %>% unique() %>% sort()
+    dyads_ls <- periods_xx %>% purrr::map(~ {
+      A_Ready4useDyad <- renewSlot(Y_Ready4useDyad, "ds_tb",
+                                   Y_Ready4useDyad@ds_tb %>% dplyr::filter(!!rlang::sym(period_var_1L_chr) == .x) %>%
+                                     dplyr::select(-tidyselect::all_of(period_var_1L_chr)))
+      A_Ready4useDyad <- renewSlot(A_Ready4useDyad, "dictionary_r3", A_Ready4useDyad@dictionary_r3 %>% dplyr::filter(var_nm_chr %in% names(A_Ready4useDyad@ds_tb)))
+      old_chr <- setdiff(names(A_Ready4useDyad@ds_tb), uid_1L_chr)
+      new_chr <- paste0(period_var_1L_chr,.x, old_chr)
+      A_Ready4useDyad <- renewSlot(A_Ready4useDyad, "ds_tb",
+                                   1:length(old_chr) %>% purrr::reduce(.init = A_Ready4useDyad@ds_tb,
+                                                                       ~ dplyr::rename(.x, !!rlang::sym(new_chr[.y]) := old_chr[.y]))) %>%
+        renewSlot("dictionary_r3", 1:length(old_chr) %>% purrr::reduce(.init = A_Ready4useDyad@dictionary_r3,
+                                                                       ~ dplyr::mutate(.x, var_nm_chr = var_nm_chr %>% stringr::str_replace_all(old_chr[.y], new_chr[.y]),
+                                                                                       var_desc_chr = var_desc_chr %>% stringr::str_replace_all(old_chr[.y], new_chr[.y]))))
+      B_Ready4useDyad <- make_service_summary(renewSlot(Z_Ready4useDyad,"ds_tb",
+                                                        Z_Ready4useDyad@ds_tb %>% dplyr::filter(!!rlang::sym(period_var_1L_chr) == .x)),
+                                              active_base_1L_chr = active_base_1L_chr,
+                                              metric_var_1L_chr = metric_var_1L_chr, metrics_chr = character(0),
+                                              missing_val_1L_dbl = missing_val_1L_dbl, patterns_ls = patterns_ls,
+                                              period_ctg_1L_chr = period_ctg_1L_chr,
+                                              period_var_1L_chr = period_var_1L_chr, prefix_1L_chr = paste0(period_var_1L_chr, .x),
+                                              service_var_1L_chr = service_var_1L_chr, summary_fn = summary_fn,
+                                              tenure_var_1L_chr = tenure_var_1L_chr, uid_1L_chr = uid_1L_chr,
+                                              update_desc_1L_lgl = update_desc_1L_lgl, var_ctg_chr = var_ctg_chr)
+      renewSlot(A_Ready4useDyad, "ds_tb",
+                dplyr::inner_join(A_Ready4useDyad@ds_tb,
+                                  B_Ready4useDyad@ds_tb) %>%
+                  dplyr::mutate(dplyr::across(where(is.numeric), ~ dplyr::coalesce(.x, 0)))) %>%
+        ready4use::add_dictionary(new_cases_r3 = B_Ready4useDyad@dictionary_r3 %>% dplyr::filter(!var_nm_chr %in% A_Ready4useDyad@dictionary_r3$var_nm_chr))
+
+    } ) %>%
+      stats::setNames(paste0(period_var_1L_chr, periods_xx))
+    if(!identical(max_periods_1L_int, integer(0))){
+      dyads_ls <- dyads_ls %>% purrr::keep_at(1:min(max(periods_xx), max_periods_1L_int))
+    }
+    X_Ready4useDyad <- purrr::reduce(dyads_ls,
+                                     .init = X_Ready4useDyad,
+                                     ~
+                                       renewSlot(.x, "ds_tb",
+                                                 dplyr::left_join(.x@ds_tb,.y@ds_tb) %>%
+                                                   dplyr::mutate(dplyr::across(where(is.numeric), ~ dplyr::coalesce(.x, 0)))) %>%
+                                       ready4use::add_dictionary(new_cases_r3 = .y@dictionary_r3 %>% dplyr::filter(var_nm_chr %in% names(.y@ds_tb),
+                                                                                                                   !var_nm_chr %in% names(.x@ds_tb)))
+    )
     X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "ds_tb",
-                                 X_Ready4useDyad@ds_tb %>%
-                                   dplyr::filter(!is.na(UID)) %>%
-                                   dplyr::filter(Tenure <= max_tenure_1L_dbl) %>%
-                                   add_cumulatives(metrics_chr = make_metric_vars(), arrange_by_1L_chr = "Date", prefix_1L_chr = "Cumulative", group_by_1L_chr = "UID") %>%
-                                   dplyr::group_by(UID) %>%
-                                   dplyr::summarise(dplyr::across(c(Date, Referrer, Role, Sex, Age, Categorisation, Para, Aesthetic, Individual, Winter, Severity), dplyr::first),
-                                                    dplyr::across(c("Tenure", make_cumulatives(separation_after_dbl = separation_after_dbl)), max),
-                                                    dplyr::across(make_metric_vars("eoc", separation_after_dbl = separation_after_dbl)[startsWith(make_metric_vars("eoc", separation_after_dbl = separation_after_dbl),"Active")], sum)) %>%
-                                   dplyr::mutate(dplyr::across(make_metric_vars("eoc", separation_after_dbl = separation_after_dbl)[startsWith(make_metric_vars("eoc", separation_after_dbl = separation_after_dbl),"Active")], as.logical)) %>%
-                                   dplyr::ungroup() %>% dplyr::filter(Date <= join_before_dtm))
+                                 dplyr::left_join(Y_Ready4useDyad@ds_tb %>%
+                                                    dplyr::select(-period_var_1L_chr) %>%
+                                                    dplyr::group_by(!!rlang::sym(uid_1L_chr)) %>%
+                                                    dplyr::summarise(dplyr::across(dplyr::everything(), sum)) %>%
+                                                    dplyr::ungroup(),X_Ready4useDyad@ds_tb) %>%
+                                   dplyr::mutate(dplyr::across(where(is.numeric), ~ dplyr::coalesce(.x, 0)))) %>%
+      ready4use::add_dictionary(new_cases_r3 = Y_Ready4useDyad@dictionary_r3 %>% dplyr::filter(var_nm_chr %in% names(Y_Ready4useDyad@ds_tb),
+                                                                                               !var_nm_chr %in% names(X_Ready4useDyad@ds_tb)))
+
+  }
+  data_xx <- transform_data_fmt(data_xx,
+                                X_Ready4useDyad = X_Ready4useDyad)
+  return(data_xx)
+}
+make_summary_ds <- function (data_xx,
+                             active_base_1L_chr = "Active",
+                             add_with_join_xx = NULL,
+                             join_before_dtm = NULL,
+                             index_1L_chr = "Date",
+                             key_vars_chr = character(0),
+                             max_tenure_1L_dbl = numeric(0),
+                             metrics_chr = make_metric_vars(),
+                             patterns_ls = NULL,
+                             prefix_1L_chr = "Cumulative",
+                             separation_after_dbl = numeric(0),
+                             tenure_var_1L_chr = "Tenure",
+                             uid_1L_chr = "UID",
+                             update_desc_1L_lgl = TRUE)
+{
+  X_Ready4useDyad <- transform_data_fmt(data_xx,
+                                        type_1L_chr = "input")
+  if(!is.null(add_with_join_xx)){
+    Y_Ready4useDyad <- transform_data_fmt(add_with_join_xx,
+                                          type_1L_chr = "input")
   }else{
+    Y_Ready4useDyad <- NULL
+  }
+  all_vars_chr <- names(X_Ready4useDyad@ds_tb)
+  active_vars_chr <- make_metric_vars("eoc", separation_after_dbl = separation_after_dbl) %>%
+    purrr::keep(~startsWith(., active_base_1L_chr)) %>% intersect(all_vars_chr)
+  metrics_chr <- metrics_chr %>% intersect(all_vars_chr)
+  key_vars_chr <- setdiff(key_vars_chr %>% intersect(all_vars_chr), c(tenure_var_1L_chr, active_vars_chr))
+  if (!identical(max_tenure_1L_dbl, numeric(0))) {
+    if(is.null(join_before_dtm)){
+      join_before_dtm <- lubridate::as_date(Inf)
+    }
+    #cumulatives_chr <- make_cumulatives(separation_after_dbl = separation_after_dbl) %>% intersect(all_vars_chr)
+    logicals_chr <- make_metric_vars("eoc", separation_after_dbl = separation_after_dbl)[startsWith(make_metric_vars("eoc", separation_after_dbl = separation_after_dbl), active_base_1L_chr)] %>% intersect(all_vars_chr)
+    key_vars_chr <- setdiff(key_vars_chr, c(cumulatives_chr, logicals_chr))
     X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "ds_tb",
-                                 X_Ready4useDyad@ds_tb %>%
-                                   dplyr::filter(!is.na(UID)) %>%
-                                   dplyr::group_by(UID) %>%
-                                   dplyr::summarise(dplyr::across(c(Date, Referrer, Role, Sex, Age, Categorisation, Para, Aesthetic, Individual, Winter, Severity, #Disengaged
-                                                                    ProviderID, ProviderState), dplyr::first),
-                                                    dplyr::across(c(Tenure, !!!rlang::syms(cumulatives_chr)), max),
-                                                    dplyr::across(c(!!!rlang::syms(active_vars_chr)), sum)) %>%
-                                   dplyr::mutate(dplyr::across(c(!!!rlang::syms(active_vars_chr)), as.logical)) %>%
-                                   dplyr::ungroup())
+                                 X_Ready4useDyad@ds_tb %>% dplyr::filter(!is.na(!!rlang::sym(uid_1L_chr))) %>%
+                                   dplyr::filter(!!rlang::sym(tenure_var_1L_chr) <= max_tenure_1L_dbl) %>%
+                                   # add_cumulatives(metrics_chr = metrics_chr,
+                                   #                 arrange_by_1L_chr = "Date", prefix_1L_chr = "Cumulative",
+                                   #                 group_by_1L_chr = uid_1L_chr) %>%
+                                   dplyr::group_by(!!rlang::sym(uid_1L_chr)) %>%
+                                   dplyr::summarise(dplyr::across(tidyselect::any_of(c(index_1L_chr, key_vars_chr)), dplyr::first),
+                                                    dplyr::across(tidyselect::any_of(c(tenure_var_1L_chr)), max), #, cumulatives_chr
+                                                    dplyr::across(tidyselect::any_of(logicals_chr), sum)) %>%
+                                   dplyr::mutate(dplyr::across(tidyselect::any_of(logicals_chr), as.logical)) %>% dplyr::ungroup() %>%
+                                   dplyr::filter(!!rlang::sym(index_1L_chr) <= join_before_dtm))
+    X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "dictionary_r3", X_Ready4useDyad@dictionary_r3 %>% dplyr::filter(var_nm_chr %in% names(X_Ready4useDyad@ds_tb)))
+  } else {
+    cumulatives_chr <- make_cumulatives(prefix_1L_chr = prefix_1L_chr,
+                                        separation_after_dbl = separation_after_dbl) %>% intersect(all_vars_chr)
+    logicals_chr <- active_vars_chr
+    key_vars_chr <- setdiff(key_vars_chr, c(cumulatives_chr, logicals_chr))
+    X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "ds_tb",
+                                 X_Ready4useDyad@ds_tb %>% dplyr::filter(!is.na(!!rlang::sym(uid_1L_chr))) %>%
+                                   dplyr::group_by(!!rlang::sym(uid_1L_chr)) %>% dplyr::summarise(dplyr::across(tidyselect::any_of(c(index_1L_chr, key_vars_chr)), #ProviderID, ProviderState),
+                                                                                                                dplyr::first),
+                                                                                                  dplyr::across(tidyselect::any_of(c(tenure_var_1L_chr)),#, cumulatives_chr #c(Tenure, !!!rlang::syms(cumulatives_chr)),
+                                                                                                                max),
+                                                                                                  dplyr::across(tidyselect::any_of(logicals_chr), sum)) %>%
+                                   dplyr::mutate(dplyr::across(tidyselect::any_of(logicals_chr),
+                                                               as.logical)) %>% dplyr::ungroup())
+    X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "dictionary_r3", X_Ready4useDyad@dictionary_r3 %>% dplyr::filter(var_nm_chr %in% names(X_Ready4useDyad@ds_tb)))
   }
-  if(inherits(data_xx,"Ready4useDyad")){
-    X_Ready4useDyad@dictionary_r3 <- dplyr::filter(X_Ready4useDyad@dictionary_r3, var_nm_chr %in% names(X_Ready4useDyad@ds_tb))
-    data_xx <- X_Ready4useDyad
-  }else{
-    data_xx <- X_Ready4useDyad@ds_tb
+  if(!is.null(Y_Ready4useDyad)){
+    X_Ready4useDyad <- ready4use::add_with_join(X_Ready4useDyad, Y_Ready4useDyad)
   }
+  if(!is.null(patterns_ls)){
+    X_Ready4useDyad <- ready4use::update_column_names(X_Ready4useDyad, patterns_ls = patterns_ls, update_desc_1L_lgl = update_desc_1L_lgl)
+  }
+  data_xx <- transform_data_fmt(data_xx,
+                                X_Ready4useDyad = X_Ready4useDyad)
   return(data_xx)
 }
 make_temporal_fns <- function(daily_fn = make_date_tfmn_fn(),

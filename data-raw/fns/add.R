@@ -253,6 +253,24 @@ add_fabels <- function(ts_models_ls,
   ts_models_ls <- append(ts_models_ls, list(fabels_ls = fabels_ls))
   return(ts_models_ls)
 }
+add_period <- function(data_xx,
+                       period_ctg_1L_chr = "Temporal",
+                       period_var_1L_chr = "Period",
+                       tenure_var_1L_chr = "Tenure"){
+  X_Ready4useDyad <- transform_data_fmt(data_xx,
+                                        type_1L_chr = "input")
+  X_Ready4useDyad <- renewSlot(X_Ready4useDyad,"ds_tb",
+                               X_Ready4useDyad@ds_tb %>%
+                                 dplyr::mutate(!!rlang::sym(period_var_1L_chr) := purrr::map_int(!!rlang::sym(tenure_var_1L_chr), ~max(ceiling(.),1))))
+  X_Ready4useDyad <- X_Ready4useDyad %>%
+    ready4use::add_dictionary(new_cases_r3 = ready4use_dictionary() %>%
+                                ready4use::renew.ready4use_dictionary(var_nm_chr = period_var_1L_chr,
+                                                                      var_ctg_chr = period_ctg_1L_chr,
+                                                                      var_desc_chr = period_var_1L_chr,
+                                                                      var_type_chr = "character"))
+  data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
+  return(data_xx)
+}
 add_sampled_imputations <- function(data_xx,
                                     groupings_chr,
                                     exclude_chr = character(0),
@@ -380,7 +398,7 @@ add_shorthand_to_caption <- function(caption_1L_chr = "",
                                      min_1L_int = 3L,
                                      original_xx = character(0),
                                      shorten_1L_chr = character(0)){
-  x_ready4show_correspondences <- make_correspondences(data_tsb, key_1L_chr = shorten_1L_chr, min_1L_int = min_1L_int, original_xx = original_xx)
+  x_ready4show_correspondences <- make_new_correspondences(data_tsb, key_1L_chr = shorten_1L_chr, min_1L_int = min_1L_int, original_xx = original_xx)
   if(sum(x_ready4show_correspondences$old_nms_chr == x_ready4show_correspondences$new_nms_chr)<nrow(x_ready4show_correspondences)){
     caption_1L_chr <- c(caption_1L_chr, purrr::pmap_chr(x_ready4show_correspondences, ~ paste0(..2, "-",stringr::str_trim(..1)))) %>% paste0(collapse = "  ") %>%
       stringr::str_wrap()

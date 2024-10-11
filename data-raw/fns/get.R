@@ -1,3 +1,17 @@
+get_ds_from_web_zip <- function(file_1L_chr,
+                                url_1L_chr,
+                                mode_1L_chr = "wb",
+                                read_fn = read.csv,
+                                read_fn_args_ls = NULL){
+  dir_1L_chr <- tempdir()
+  zip_1L_chr <- tempfile()
+  download.file(url_1L_chr, zip_1L_chr, quiet=TRUE, mode=mode_1L_chr)
+  temp_path_1L_chr <-  unzip(file.path(zip_1L_chr), files = file_1L_chr, exdir = dir_1L_chr)
+  ds_xx <- rlang::exec(read_fn, temp_path_1L_chr, !!!read_fn_args_ls)
+  unlink(zip_1L_chr)
+  unlink(temp_path_1L_chr)
+  return(ds_xx)
+}
 get_index_type <- function(data_tsb,
                            index_1L_chr = character(0)){
   if(identical(index_1L_chr, character(0))){
@@ -27,17 +41,28 @@ get_index_type <- function(data_tsb,
   }
   return(index_type_1L_chr)
 }
-get_medicare_data <- function(path_1L_chr,
-                              clean_1L_lgl = FALSE){
-  medicare_tb <- read.csv(path_1L_chr, fileEncoding = "latin1")
+get_medicare_data <- function(path_1L_chr = character(0),
+                              clean_1L_lgl = FALSE,
+                              file_1L_chr = "MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv",
+                              url_1L_chr = character(0)){
+  if(!identical(path_1L_chr, character(0))){
+    medicare_tb <- read.csv(path_1L_chr, fileEncoding = "latin1")
+  }else{
+    if(identical(url_1L_chr, character(0))){
+      url_1L_chr <- "https://www.aihw.gov.au/getmedia/285c5287-97ba-4acb-9003-e9edab1f61da/Medicare_mental_health_services_data_2223.zip"
+    }
+    medicare_df <- get_ds_from_web_zip("MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv",
+                                       url_1L_chr = url_1L_chr,
+                                       read_fn_args_ls = list(fileEncoding = "latin1"))
+  }
   if(clean_1L_lgl){
-    medicare_tb <- medicare_tb %>%
+    medicare_df <- medicare_df %>%
       dplyr::mutate(dplyr::across(dplyr::everything(), ~ stringr::str_replace_all(.x,"\u0096","-"))) %>%
       dplyr::mutate(ProviderType = gsub("\U00A0", " ", ProviderType)) %>%
       dplyr::mutate(Value = as.numeric(Value)) %>%
       dplyr::mutate(AgeGroup = stringr::str_squish(AgeGroup))
   }
-  medicare_tb <- medicare_tb %>%
+  medicare_tb <- medicare_df %>%
     tibble::as_tibble()
   return(medicare_tb)
 
@@ -108,7 +133,7 @@ get_raw_erp_data <- function(uid_1L_chr = "ERP_Q",
   if(identical(version_1L_chr, character(0))){
     version_1L_chr <- NULL
   }
-  erp_raw_tb  <-  readabs::read_api(uid_1L_chr,
+  erp_raw_tb <- readabs::read_api(uid_1L_chr,
                                     datakey = list(measure = measure_int %>% as.list(),
                                                    sex= sex_int %>% as.list(),
                                                    age = age_chr %>% as.list(),
