@@ -1,3 +1,28 @@
+#' Get dataset from web zip
+#' @description get_ds_from_web_zip() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get dataset from web zip. The function returns Dataset (an output object of multiple potential types).
+#' @param file_1L_chr File (a character vector of length one)
+#' @param url_1L_chr Url (a character vector of length one)
+#' @param mode_1L_chr Mode (a character vector of length one), Default: 'wb'
+#' @param read_fn Read (a function), Default: read.csv
+#' @param read_fn_args_ls Read function arguments (a list), Default: NULL
+#' @return Dataset (an output object of multiple potential types)
+#' @rdname get_ds_from_web_zip
+#' @export 
+#' @importFrom rlang exec
+#' @keywords internal
+get_ds_from_web_zip <- function (file_1L_chr, url_1L_chr, mode_1L_chr = "wb", read_fn = read.csv, 
+    read_fn_args_ls = NULL) 
+{
+    dir_1L_chr <- tempdir()
+    zip_1L_chr <- tempfile()
+    download.file(url_1L_chr, zip_1L_chr, quiet = TRUE, mode = mode_1L_chr)
+    temp_path_1L_chr <- unzip(file.path(zip_1L_chr), files = file_1L_chr, 
+        exdir = dir_1L_chr)
+    ds_xx <- rlang::exec(read_fn, temp_path_1L_chr, !!!read_fn_args_ls)
+    unlink(zip_1L_chr)
+    unlink(temp_path_1L_chr)
+    return(ds_xx)
+}
 #' Get index type
 #' @description get_index_type() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get index type. The function returns Index type (a character vector of length one).
 #' @param data_tsb Data (a tsibble)
@@ -31,25 +56,36 @@ get_index_type <- function (data_tsb, index_1L_chr = character(0))
 }
 #' Get medicare data
 #' @description get_medicare_data() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get medicare data. The function returns Medicare (a tibble).
-#' @param path_1L_chr Path (a character vector of length one)
+#' @param path_1L_chr Path (a character vector of length one), Default: character(0)
 #' @param clean_1L_lgl Clean (a logical vector of length one), Default: FALSE
+#' @param file_1L_chr File (a character vector of length one), Default: 'MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv'
+#' @param url_1L_chr Url (a character vector of length one), Default: character(0)
 #' @return Medicare (a tibble)
 #' @rdname get_medicare_data
 #' @export 
 #' @importFrom dplyr mutate across everything
 #' @importFrom stringr str_replace_all str_squish
 #' @importFrom tibble as_tibble
-#' @keywords internal
-get_medicare_data <- function (path_1L_chr, clean_1L_lgl = FALSE) 
+get_medicare_data <- function (path_1L_chr = character(0), clean_1L_lgl = FALSE, file_1L_chr = "MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv", 
+    url_1L_chr = character(0)) 
 {
-    medicare_tb <- read.csv(path_1L_chr, fileEncoding = "latin1")
+    if (!identical(path_1L_chr, character(0))) {
+        medicare_tb <- read.csv(path_1L_chr, fileEncoding = "latin1")
+    }
+    else {
+        if (identical(url_1L_chr, character(0))) {
+            url_1L_chr <- "https://www.aihw.gov.au/getmedia/285c5287-97ba-4acb-9003-e9edab1f61da/Medicare_mental_health_services_data_2223.zip"
+        }
+        medicare_df <- get_ds_from_web_zip("MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv", 
+            url_1L_chr = url_1L_chr, read_fn_args_ls = list(fileEncoding = "latin1"))
+    }
     if (clean_1L_lgl) {
-        medicare_tb <- medicare_tb %>% dplyr::mutate(dplyr::across(dplyr::everything(), 
+        medicare_df <- medicare_df %>% dplyr::mutate(dplyr::across(dplyr::everything(), 
             ~stringr::str_replace_all(.x, "\u0096", "-"))) %>% 
             dplyr::mutate(ProviderType = gsub(" ", " ", ProviderType)) %>% 
             dplyr::mutate(Value = as.numeric(Value)) %>% dplyr::mutate(AgeGroup = stringr::str_squish(AgeGroup))
     }
-    medicare_tb <- medicare_tb %>% tibble::as_tibble()
+    medicare_tb <- medicare_df %>% tibble::as_tibble()
     return(medicare_tb)
 }
 #' Get new index
@@ -123,7 +159,6 @@ get_performance <- function (ts_mdls_ls, data_xx, metric_1L_chr = make_metric_va
 #' @importFrom purrr map_chr map_int
 #' @importFrom stringr str_replace
 #' @importFrom readabs read_api
-#' @keywords internal
 get_raw_erp_data <- function (uid_1L_chr = "ERP_Q", age_chr = as.character(1:115), 
     end_1L_chr = character(0), frequency_1L_chr = "quarterly", 
     measure_chr = c("count", "change", "%change"), region_chr = c("NSW", 
@@ -155,11 +190,16 @@ get_raw_erp_data <- function (uid_1L_chr = "ERP_Q", age_chr = as.character(1:115
     if (identical(version_1L_chr, character(0))) {
         version_1L_chr <- NULL
     }
-    erp_raw_tb <- readabs::read_api(uid_1L_chr, datakey = list(measure = measure_int %>% 
-        as.list(), sex = sex_int %>% as.list(), age = age_chr %>% 
-        as.list(), region = region_chr %>% as.list(), freq = frequency_1L_chr %>% 
-        as.list()), start_period = start_1L_chr, end_period = end_1L_chr, 
-        version = version_1L_chr)
+    erp_raw_tb <- get_gracefully(uid_1L_chr, fn = readabs::read_api, 
+        args_ls = list(datakey = list(measure = measure_int %>% 
+            as.list(), sex = sex_int %>% as.list(), age = age_chr %>% 
+            as.list(), region = region_chr %>% as.list(), freq = frequency_1L_chr %>% 
+            as.list()), start_period = start_1L_chr, end_period = end_1L_chr, 
+            version = version_1L_chr), not_chr_1L_lgl = TRUE, 
+        tests_chr = c("cannot open the connection to ", "unknown input format", 
+            "Attempt to get feed was unsuccessful", "Not Found \\(HTTP 404\\)", 
+            "Bad Request \\(HTTP 400\\)", "HTTP error 404", "Could not resolve host", 
+            "Could not parse", "Unknown HTTP verb", "Gateway Timeout \\(HTTP 504\\)"))
     return(erp_raw_tb)
 }
 #' Get temporal function

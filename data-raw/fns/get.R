@@ -133,15 +133,29 @@ get_raw_erp_data <- function(uid_1L_chr = "ERP_Q",
   if(identical(version_1L_chr, character(0))){
     version_1L_chr <- NULL
   }
-  erp_raw_tb <- readabs::read_api(uid_1L_chr,
-                                    datakey = list(measure = measure_int %>% as.list(),
-                                                   sex= sex_int %>% as.list(),
-                                                   age = age_chr %>% as.list(),
-                                                   region = region_chr %>% as.list(),
-                                                   freq = frequency_1L_chr %>% as.list()),
-                                    start_period = start_1L_chr,
-                                    end_period = end_1L_chr,
-                                    version = version_1L_chr)
+  erp_raw_tb <- get_gracefully(uid_1L_chr, fn = readabs::read_api, args_ls = list(#uid_1L_chr, # get_gracefully
+                                                                                  datakey = list(measure = measure_int %>% as.list(),
+                                                                                                 sex= sex_int %>% as.list(),
+                                                                                                 age = age_chr %>% as.list(),
+                                                                                                 region = region_chr %>% as.list(),
+                                                                                                 freq = frequency_1L_chr %>% as.list()),
+                                                                                  start_period = start_1L_chr,
+                                                                                  end_period = end_1L_chr,
+                                                                                  version = version_1L_chr),
+                               not_chr_1L_lgl = TRUE,
+                               tests_chr = c("cannot open the connection to ", "unknown input format",
+                                             "Attempt to get feed was unsuccessful", "Not Found \\(HTTP 404\\)",
+                                             "Bad Request \\(HTTP 400\\)","HTTP error 404", "Could not resolve host", "Could not parse",
+                                             "Unknown HTTP verb", "Gateway Timeout \\(HTTP 504\\)")) # (HTTP 504)
+  # erp_raw_tb <- readabs::read_api(uid_1L_chr, # get_gracefully
+  #                                   datakey = list(measure = measure_int %>% as.list(),
+  #                                                  sex= sex_int %>% as.list(),
+  #                                                  age = age_chr %>% as.list(),
+  #                                                  region = region_chr %>% as.list(),
+  #                                                  freq = frequency_1L_chr %>% as.list()),
+  #                                   start_period = start_1L_chr,
+  #                                   end_period = end_1L_chr,
+  #                                   version = version_1L_chr)
 
   return(erp_raw_tb)
 }

@@ -6,7 +6,7 @@
 #' @return Medicare (a tibble)
 #' @rdname update_medicare_data
 #' @export 
-#' @importFrom dplyr mutate case_when select everything filter
+#' @importFrom dplyr mutate case_when filter select everything
 #' @importFrom purrr map2_chr
 #' @importFrom stringr str_sub
 #' @importFrom tsibble yearquarter
@@ -15,12 +15,14 @@ update_medicare_data <- function (medicare_tb, measures_chr = character(0), year
 {
     medicare_tb <- medicare_tb %>% dplyr::mutate(Year_Quarter = dplyr::case_when(Quarter == 
         "July to September" ~ "Q3", Quarter == "October to December" ~ 
-        "Q4", Quarter == "January to March" ~ "Q1", T ~ "Q2")) %>% 
-        dplyr::mutate(Year_Quarter = Year_Quarter %>% purrr::map2_chr(FinancialYear, 
-            ~paste0(ifelse(.x %in% c("Q1", "Q2"), paste0("202", 
-                stringr::str_sub(.y, start = 7)), stringr::str_sub(.y, 
-                end = 4)), " ", .x))) %>% dplyr::select(Year_Quarter, 
-        dplyr::everything()) %>% dplyr::mutate(Year_Quarter = tsibble::yearquarter(Year_Quarter)) %>% 
+        "Q4", Quarter == "January to March" ~ "Q1", Quarter == 
+        "April to June" ~ "Q2", T ~ Quarter)) %>% dplyr::filter(Year_Quarter %in% 
+        paste0("Q", 1:4)) %>% dplyr::mutate(Year_Quarter = Year_Quarter %>% 
+        purrr::map2_chr(FinancialYear, ~paste0(ifelse(.x %in% 
+            c("Q1", "Q2"), paste0("202", stringr::str_sub(.y, 
+            start = 7)), stringr::str_sub(.y, end = 4)), " ", 
+            .x))) %>% dplyr::select(Year_Quarter, dplyr::everything()) %>% 
+        dplyr::mutate(Year_Quarter = tsibble::yearquarter(Year_Quarter)) %>% 
         dplyr::mutate(Quarter = Year_Quarter) %>% dplyr::select(-Year_Quarter) %>% 
         dplyr::select(FinancialYear, Quarter, dplyr::everything())
     if (!identical(measures_chr, character(0))) {

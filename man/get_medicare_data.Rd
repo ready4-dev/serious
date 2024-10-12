@@ -4,12 +4,21 @@
 \alias{get_medicare_data}
 \title{Get medicare data}
 \usage{
-get_medicare_data(path_1L_chr, clean_1L_lgl = FALSE)
+get_medicare_data(
+  path_1L_chr = character(0),
+  clean_1L_lgl = FALSE,
+  file_1L_chr = "MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv",
+  url_1L_chr = character(0)
+)
 }
 \arguments{
-\item{path_1L_chr}{Path (a character vector of length one)}
+\item{path_1L_chr}{Path (a character vector of length one), Default: character(0)}
 
 \item{clean_1L_lgl}{Clean (a logical vector of length one), Default: FALSE}
+
+\item{file_1L_chr}{File (a character vector of length one), Default: 'MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv'}
+
+\item{url_1L_chr}{Url (a character vector of length one), Default: character(0)}
 }
 \value{
 Medicare (a tibble)
@@ -17,4 +26,3 @@ Medicare (a tibble)
 \description{
 get_medicare_data() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get medicare data. The function returns Medicare (a tibble).
 }
-\keyword{internal}

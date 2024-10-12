@@ -42,4 +42,3 @@ Estimatedesident Population raw (a tibble)
 \description{
 get_raw_erp_data() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get raw estimatedesident population data. The function returns Estimatedesident Population raw (a tibble).
 }
-\keyword{internal}

@@ -5,23 +5,23 @@
 \title{Make Estimatedesident Population dataset}
 \usage{
 make_erp_ds(
-  erp_raw_tb,
-  age_range_int,
+  erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
+  age_range_int = 1:115,
   age_bands_lup = NULL,
   age_tfmn_fn = as.integer,
   as_dyad_1L_lgl = TRUE,
   frequency_1L_chr = "quarterly",
   measure_1L_chr = "count",
   select_chr = c("time_period", "age", "sex", "obs_value"),
-  sex_chr = c("female", "male", "person"),
+  sex_chr = c("Female", "Male", "Total"),
   summarise_1L_lgl = FALSE,
   var_ctg_chr = c("Temporal", "Key", "Key", "Metric")
 )
 }
 \arguments{
-\item{erp_raw_tb}{Estimatedesident Population raw (a tibble)}
+\item{erp_raw_tb}{Estimatedesident Population raw (a tibble), Default: get_raw_erp_data(region_chr = "AUS")}
 
-\item{age_range_int}{Age range (an integer vector)}
+\item{age_range_int}{Age range (an integer vector), Default: 1:115}
 
 \item{age_bands_lup}{Age bands (a lookup table), Default: NULL}
 
@@ -35,7 +35,7 @@ make_erp_ds(
 
 \item{select_chr}{Select (a character vector), Default: c("time_period", "age", "sex", "obs_value")}
 
-\item{sex_chr}{Sex (a character vector), Default: c("female", "male", "person")}
+\item{sex_chr}{Sex (a character vector), Default: c("Female", "Male", "Total")}
 
 \item{summarise_1L_lgl}{Summarise (a logical vector of length one), Default: FALSE}
 
@@ -47,4 +47,3 @@ Estimatedesident Population (an output object of multiple potential types)
 \description{
 make_erp_ds() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make estimatedesident population dataset. The function returns Estimatedesident Population (an output object of multiple potential types).
 }
-\keyword{internal}

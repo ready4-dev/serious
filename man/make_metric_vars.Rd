@@ -32,4 +32,3 @@ Metric variables (a character vector)
 \description{
 make_metric_vars() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make metric variables. The function returns Metric variables (a character vector).
 }
-\keyword{internal}

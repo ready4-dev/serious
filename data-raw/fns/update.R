@@ -5,7 +5,9 @@ update_medicare_data <- function(medicare_tb,
     dplyr::mutate(Year_Quarter = dplyr::case_when(Quarter == "July to September" ~ "Q3",
                                                   Quarter == "October to December" ~ "Q4",
                                                   Quarter == "January to March" ~ "Q1",
-                                                  T  ~ "Q2")) %>%
+                                                  Quarter == "April to June" ~ "Q2",
+                                                  T  ~ Quarter)) %>%
+    dplyr::filter(Year_Quarter %in% paste0("Q",1:4)) %>%
     dplyr::mutate(Year_Quarter = Year_Quarter %>% purrr::map2_chr(FinancialYear,
                                                                   ~paste0(ifelse(.x %in% c("Q1","Q2"),
                                                                                  paste0("202",stringr::str_sub(.y, start=7)),

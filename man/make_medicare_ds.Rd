@@ -5,9 +5,9 @@
 \title{Make medicare dataset}
 \usage{
 make_medicare_ds(
-  mbs_raw_tb,
+  mbs_raw_tb = get_medicare_data(clean_1L_lgl = TRUE),
   as_dyad_1L_lgl = TRUE,
-  erp_tb = NULL,
+  erp_tb = make_erp_ds(as_dyad_1L_lgl = FALSE),
   age_bands_lup = NULL,
   age_group_var_1L_chr = "AgeGroup",
   index_1L_chr = "Quarter",
@@ -26,11 +26,11 @@ make_medicare_ds(
 )
 }
 \arguments{
-\item{mbs_raw_tb}{Medicare Benefits Schedule raw (a tibble)}
+\item{mbs_raw_tb}{Medicare Benefits Schedule raw (a tibble), Default: get_medicare_data(clean_1L_lgl = TRUE)}
 
 \item{as_dyad_1L_lgl}{As dyad (a logical vector of length one), Default: TRUE}
 
-\item{erp_tb}{Estimatedesident Population (a tibble), Default: NULL}
+\item{erp_tb}{Estimatedesident Population (a tibble), Default: make_erp_ds(as_dyad_1L_lgl = FALSE)}
 
 \item{age_bands_lup}{Age bands (a lookup table), Default: NULL}
 
@@ -68,4 +68,3 @@ a Medicare Benefits Schedule (an output object of multiple potential types)
 \description{
 make_medicare_ds() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make medicare dataset. The function returns a Medicare Benefits Schedule (an output object of multiple potential types).
 }
-\keyword{internal}

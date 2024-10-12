@@ -17,6 +17,13 @@ development:
 reference:
 - title: "Functions"
 - contents:
+  - get_medicare_data
+  - get_raw_erp_data
   - get_tsibble
+  - make_erp_ds
+  - make_medicare_ds
+  - make_metric_vars
+  - make_metrics_summary
+  - make_new_correspondences
   - make_ts_models
   - transform_to_tsibble

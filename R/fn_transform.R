@@ -61,6 +61,41 @@ transform_age_groups <- function (data_tb, age_bands_lup, index_1L_chr, key_vars
     })
     return(data_tb)
 }
+#' Transform data format
+#' @description transform_data_fmt() is a Transform function that edits an object in such a way that core object attributes - e.g. shape, dimensions, elements, type - are altered. Specifically, this function implements an algorithm to transform data format. The function returns Data (an output object of multiple potential types).
+#' @param data_xx Data (an output object of multiple potential types)
+#' @param X_Ready4useDyad PARAM_DESCRIPTION, Default: ready4use::Ready4useDyad()
+#' @param type_1L_chr Type (a character vector of length one), Default: c("output", "input")
+#' @return Data (an output object of multiple potential types)
+#' @rdname transform_data_fmt
+#' @export 
+#' @importFrom ready4use Ready4useDyad add_dictionary
+#' @importFrom dplyr filter
+#' @keywords internal
+transform_data_fmt <- function (data_xx, X_Ready4useDyad = ready4use::Ready4useDyad(), 
+    type_1L_chr = c("output", "input")) 
+{
+    type_1L_chr <- match.arg(type_1L_chr)
+    if (type_1L_chr == "input") {
+        if (!inherits(data_xx, "Ready4useDyad")) {
+            data_xx <- ready4use::Ready4useDyad(ds_tb = data_xx) %>% 
+                ready4use::add_dictionary()
+        }
+    }
+    else {
+        if (inherits(data_xx, "Ready4useDyad")) {
+            X_Ready4useDyad@dictionary_r3 <- dplyr::filter(X_Ready4useDyad@dictionary_r3, 
+                var_nm_chr %in% names(X_Ready4useDyad@ds_tb))
+            X_Ready4useDyad@dictionary_r3 <- X_Ready4useDyad@dictionary_r3 %>% 
+                dplyr::filter(!duplicated(var_nm_chr))
+            data_xx <- X_Ready4useDyad
+        }
+        else {
+            data_xx <- X_Ready4useDyad@ds_tb
+        }
+    }
+    return(data_xx)
+}
 #' Transform output
 #' @description transform_output() is a Transform function that edits an object in such a way that core object attributes - e.g. shape, dimensions, elements, type - are altered. Specifically, this function implements an algorithm to transform output. The function returns Output (a list).
 #' @param output_ls Output (a list)
@@ -100,7 +135,7 @@ transform_to_shorthand <- function (data_tb, key_1L_chr = character(0), min_1L_i
         data_tb <- tsibble::as_tibble(data_tb)
     }
     if (nrow(x_ready4show_correspondences) == 0) {
-        x_ready4show_correspondences <- make_correspondences(data_tb, 
+        x_ready4show_correspondences <- make_new_correspondences(data_tb, 
             key_1L_chr = key_1L_chr, min_1L_int = min_1L_int, 
             original_xx = original_xx)
     }

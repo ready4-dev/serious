@@ -21,4 +21,3 @@ Summary (a tibble)
 \description{
 make_metrics_summary() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make metrics summary. The function returns Summary (a tibble).
 }
-\keyword{internal}

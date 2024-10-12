@@ -6,22 +6,49 @@
 \usage{
 make_summary_ds(
   data_xx,
+  active_base_1L_chr = "Active",
+  add_with_join_xx = NULL,
   join_before_dtm = NULL,
+  index_1L_chr = "Date",
+  key_vars_chr = character(0),
   max_tenure_1L_dbl = numeric(0),
+  metrics_chr = make_metric_vars(),
+  patterns_ls = NULL,
   prefix_1L_chr = "Cumulative",
-  separation_after_dbl = numeric(0)
+  separation_after_dbl = numeric(0),
+  tenure_var_1L_chr = "Tenure",
+  uid_1L_chr = "UID",
+  update_desc_1L_lgl = TRUE
 )
 }
 \arguments{
 \item{data_xx}{Data (an output object of multiple potential types)}
 
+\item{active_base_1L_chr}{Active base (a character vector of length one), Default: 'Active'}
+
+\item{add_with_join_xx}{Add with join (an output object of multiple potential types), Default: NULL}
+
 \item{join_before_dtm}{Join before (a date vector), Default: NULL}
 
+\item{index_1L_chr}{Index (a character vector of length one), Default: 'Date'}
+
+\item{key_vars_chr}{Key variables (a character vector), Default: character(0)}
+
 \item{max_tenure_1L_dbl}{Maximum tenure (a double vector of length one), Default: numeric(0)}
+
+\item{metrics_chr}{Metrics (a character vector), Default: make_metric_vars()}
+
+\item{patterns_ls}{Patterns (a list), Default: NULL}
 
 \item{prefix_1L_chr}{Prefix (a character vector of length one), Default: 'Cumulative'}
 
 \item{separation_after_dbl}{Separation after (a double vector), Default: numeric(0)}
+
+\item{tenure_var_1L_chr}{Tenure variable (a character vector of length one), Default: 'Tenure'}
+
+\item{uid_1L_chr}{Unique identifier (a character vector of length one), Default: 'UID'}
+
+\item{update_desc_1L_lgl}{Update description (a logical vector of length one), Default: TRUE}
 }
 \value{
 Data (an output object of multiple potential types)

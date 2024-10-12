@@ -23,14 +23,21 @@ x <- ready4fun::make_pkg_desc_ls(pkg_title_1L_chr = "Develop, Test and Apply Tim
   build_ignore_ls = ready4fun::make_build_ignore_ls(file_nms_chr = c("initial_setup.R")),
   check_type_1L_chr = "ready4",
   copyright_holders_chr = "Monash University",
-  custom_dmt_ls = ready4fun::make_custom_dmt_ls(user_manual_fns_chr = c("get_tsibble",
+  custom_dmt_ls = ready4fun::make_custom_dmt_ls(user_manual_fns_chr = c("get_medicare_data",
+                                                                        "get_raw_erp_data",
+                                                                        "get_tsibble",
+                                                                        "make_erp_ds",
+                                                                        "make_medicare_ds",
+                                                                        "make_metric_vars",
+                                                                        "make_metrics_summary",
+                                                                        "make_new_correspondences",
                                                                         "make_ts_models",
                                                                         "transform_to_tsibble")),##
   dev_pkgs_chr = c(#"cmdstanr",
     #"ready4",#"ready4fun",
     "ready4use",
     "ready4show",
-    "youthvars",
+    "youthvars"
     #"scorz",
     #"specific"
   ),

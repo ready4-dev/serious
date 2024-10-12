@@ -43,15 +43,15 @@ make_episodes_vars <- function(active_var_1L_chr = "Active",
   }
   return(episodes_vars_xx)
 }
-make_erp_ds <- function(erp_raw_tb,
-                        age_range_int,
+make_erp_ds <- function(erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
+                        age_range_int = 1:115,
                         age_bands_lup = NULL,
                         age_tfmn_fn = as.integer,
                         as_dyad_1L_lgl = TRUE,
                         frequency_1L_chr = "quarterly",
                         measure_1L_chr = "count",
                         select_chr = c("time_period", "age", "sex", "obs_value"),
-                        sex_chr = c("female", "male", "person"),
+                        sex_chr = c("Female", "Male", "Total"),
                         summarise_1L_lgl = FALSE,
                         var_ctg_chr = c("Temporal", "Key", "Key", "Metric")){
   measure_1L_int <- switch(measure_1L_chr, "count" = 1, "change" = 2, "%change" = 3)
@@ -98,7 +98,7 @@ make_erp_ds <- function(erp_raw_tb,
 }
 make_medicare_ds <- function(mbs_raw_tb = get_medicare_data(clean_1L_lgl = TRUE),
                              as_dyad_1L_lgl = TRUE,
-                             erp_tb = NULL,
+                             erp_tb = make_erp_ds(as_dyad_1L_lgl = FALSE),
                              age_bands_lup = NULL,
                              age_group_var_1L_chr = "AgeGroup",
                              index_1L_chr = "Quarter",
@@ -130,10 +130,14 @@ make_medicare_ds <- function(mbs_raw_tb = get_medicare_data(clean_1L_lgl = TRUE)
                            values_to_1L_chr = values_to_1L_chr)
   }else{
     mbs_tb <- mbs_tb %>%
-      dplyr::rename(!!rlang::sym(rename_provider_to_1L_chr) := !!rlang::sym(provider_var_1L_chr),
-                    !!rlang::sym(rename_age_to_1L_chr) := !!rlang::sym(age_group_var_1L_chr)) %>%
+      dplyr::rename(!!rlang::sym(rename_provider_to_1L_chr) := !!rlang::sym(provider_var_1L_chr))
+    if(!identical(rename_age_to_1L_chr, character(0))){
+      mbs_tb %>%
+        dplyr::rename(!!rlang::sym(rename_age_to_1L_chr) := !!rlang::sym(age_group_var_1L_chr))
+    }
+    mbs_tb <- mbs_tb %>%
       tidyr::pivot_wider(names_from = names_from_1L_chr,
-                         values_from = values_to_1L_chr) ## PICK UP HERE RETURNING LIST COLS
+                         values_from = values_to_1L_chr)
   }
   mbs_tb <- make_metrics_summary(mbs_tb,
                                  index_1L_chr = index_1L_chr,
