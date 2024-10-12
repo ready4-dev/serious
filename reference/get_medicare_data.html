@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">serious</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9001</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,12 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_medicare_data</span><span class="op">(</span><span class="va">path_1L_chr</span>, clean_1L_lgl <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_medicare_data</span><span class="op">(</span></span>
+<span>  path_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  clean_1L_lgl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  file_1L_chr <span class="op">=</span> <span class="st">"MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv"</span>,</span>
+<span>  url_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -46,11 +51,19 @@
 
 
 <dl><dt id="arg-path-l-chr">path_1L_chr<a class="anchor" aria-label="anchor" href="#arg-path-l-chr"></a></dt>
-<dd><p>Path (a character vector of length one)</p></dd>
+<dd><p>Path (a character vector of length one), Default: character(0)</p></dd>
 
 
 <dt id="arg-clean-l-lgl">clean_1L_lgl<a class="anchor" aria-label="anchor" href="#arg-clean-l-lgl"></a></dt>
 <dd><p>Clean (a logical vector of length one), Default: FALSE</p></dd>
+
+
+<dt id="arg-file-l-chr">file_1L_chr<a class="anchor" aria-label="anchor" href="#arg-file-l-chr"></a></dt>
+<dd><p>File (a character vector of length one), Default: 'MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv'</p></dd>
+
+
+<dt id="arg-url-l-chr">url_1L_chr<a class="anchor" aria-label="anchor" href="#arg-url-l-chr"></a></dt>
+<dd><p>Url (a character vector of length one), Default: character(0)</p></dd>
 
 </dl></div>
     <div class="section level2">
