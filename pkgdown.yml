@@ -3,7 +3,7 @@ pkgdown: 2.1.1
 pkgdown_sha: ~
 articles:
   serious: serious.html
-last_built: 2024-10-14T20:29Z
+last_built: 2024-10-14T20:47Z
 urls:
   reference: https://ready4-dev.github.io/serious/reference
   article: https://ready4-dev.github.io/serious/articles
