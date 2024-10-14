@@ -581,7 +581,8 @@ make_summary_ds <- function (data_xx,
     }
     #cumulatives_chr <- make_cumulatives(separation_after_dbl = separation_after_dbl) %>% intersect(all_vars_chr)
     logicals_chr <- make_metric_vars("eoc", separation_after_dbl = separation_after_dbl)[startsWith(make_metric_vars("eoc", separation_after_dbl = separation_after_dbl), active_base_1L_chr)] %>% intersect(all_vars_chr)
-    key_vars_chr <- setdiff(key_vars_chr, c(cumulatives_chr, logicals_chr))
+    key_vars_chr <- setdiff(key_vars_chr, c(#cumulatives_chr,
+                                            logicals_chr))
     X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "ds_tb",
                                  X_Ready4useDyad@ds_tb %>% dplyr::filter(!is.na(!!rlang::sym(uid_1L_chr))) %>%
                                    dplyr::filter(!!rlang::sym(tenure_var_1L_chr) <= max_tenure_1L_dbl) %>%

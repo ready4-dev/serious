@@ -158,6 +158,7 @@ get_performance <- function (ts_mdls_ls, data_xx, metric_1L_chr = make_metric_va
 #' @export 
 #' @importFrom purrr map_chr map_int
 #' @importFrom stringr str_replace
+#' @importFrom ready4 get_gracefully
 #' @importFrom readabs read_api
 get_raw_erp_data <- function (uid_1L_chr = "ERP_Q", age_chr = as.character(1:115), 
     end_1L_chr = character(0), frequency_1L_chr = "quarterly", 
@@ -190,7 +191,7 @@ get_raw_erp_data <- function (uid_1L_chr = "ERP_Q", age_chr = as.character(1:115
     if (identical(version_1L_chr, character(0))) {
         version_1L_chr <- NULL
     }
-    erp_raw_tb <- get_gracefully(uid_1L_chr, fn = readabs::read_api, 
+    erp_raw_tb <- ready4::get_gracefully(uid_1L_chr, fn = readabs::read_api, 
         args_ls = list(datakey = list(measure = measure_int %>% 
             as.list(), sex = sex_int %>% as.list(), age = age_chr %>% 
             as.list(), region = region_chr %>% as.list(), freq = frequency_1L_chr %>% 
