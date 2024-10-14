@@ -46,7 +46,7 @@ get_medicare_data <- function(path_1L_chr = character(0),
                               file_1L_chr = "MH_MBS_QUARTERS_SEX_AGEGROUP_2223.csv",
                               url_1L_chr = character(0)){
   if(!identical(path_1L_chr, character(0))){
-    medicare_tb <- read.csv(path_1L_chr, fileEncoding = "latin1")
+    medicare_df <- read.csv(path_1L_chr, fileEncoding = "latin1")
   }else{
     if(identical(url_1L_chr, character(0))){
       url_1L_chr <- "https://www.aihw.gov.au/getmedia/285c5287-97ba-4acb-9003-e9edab1f61da/Medicare_mental_health_services_data_2223.zip"

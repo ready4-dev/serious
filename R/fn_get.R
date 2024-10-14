@@ -70,7 +70,7 @@ get_medicare_data <- function (path_1L_chr = character(0), clean_1L_lgl = FALSE,
     url_1L_chr = character(0)) 
 {
     if (!identical(path_1L_chr, character(0))) {
-        medicare_tb <- read.csv(path_1L_chr, fileEncoding = "latin1")
+        medicare_df <- read.csv(path_1L_chr, fileEncoding = "latin1")
     }
     else {
         if (identical(url_1L_chr, character(0))) {
