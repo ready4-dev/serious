@@ -27,6 +27,7 @@
 <url><loc>https://ready4-dev.github.io/serious/reference/get_ds_from_web_zip.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/get_index_type.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/get_medicare_data.html</loc></url>
+<url><loc>https://ready4-dev.github.io/serious/reference/get_model_predrs.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/get_new_index.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/get_performance.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/get_raw_erp_data.html</loc></url>
@@ -52,8 +53,10 @@
 <url><loc>https://ready4-dev.github.io/serious/reference/make_summary_ds.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/make_temporal_fns.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/make_temporal_vars.html</loc></url>
+<url><loc>https://ready4-dev.github.io/serious/reference/make_tfmn_args_ls.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/make_training_ds.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/make_ts_models.html</loc></url>
+<url><loc>https://ready4-dev.github.io/serious/reference/make_ts_models_ls.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/nseequals.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/pipe.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/plot_autocorrelations.html</loc></url>
@@ -61,6 +64,7 @@
 <url><loc>https://ready4-dev.github.io/serious/reference/plot_forecast.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/plot_lags.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/plot_multiple.html</loc></url>
+<url><loc>https://ready4-dev.github.io/serious/reference/plot_residuals.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/plot_scatter.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/plot_series.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/plot_sngl_series.html</loc></url>
@@ -70,6 +74,7 @@
 <url><loc>https://ready4-dev.github.io/serious/reference/transform_age_groups.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/transform_data_fmt.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/transform_output.html</loc></url>
+<url><loc>https://ready4-dev.github.io/serious/reference/transform_to_mdl_input.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/transform_to_shorthand.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/transform_to_temporal.html</loc></url>
 <url><loc>https://ready4-dev.github.io/serious/reference/transform_to_tsibble.html</loc></url>
