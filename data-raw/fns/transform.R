@@ -81,6 +81,31 @@ transform_output <- function(output_ls){
     purrr::flatten_dbl()
   return(output_ls)
 }
+transform_to_mdl_input <- function(data_xx,
+                                   ts_models_ls = make_ts_models_ls()){
+  assertthat::assert_that(!identical(ts_models_ls, make_ts_models_ls()))
+  args_ls <- ts_models_ls$args_ls
+  cumulatives_args_ls <- ts_models_ls$cumulatives_args_ls
+  predictor_args_ls <- ts_models_ls$predictor_args_ls
+  join_to_args_ls <- ts_models_ls$join_to_args_ls
+
+  data_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!args_ls)
+  if(!identical(predictor_args_ls, make_tfmn_args_ls())){
+    predictors_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!predictor_args_ls)
+    data_tsb <- dplyr::left_join(data_tsb, predictors_tsb)
+  }
+  if(!identical(cumulatives_args_ls, make_tfmn_args_ls())){
+    cumulatives_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!cumulatives_args_ls)
+    data_tsb <- dplyr::left_join(data_tsb, cumulatives_tsb)
+  }
+  if(!identical(join_to_args_ls, make_tfmn_args_ls())){
+    join_to_xx <- join_to_args_ls$join_to_xx
+    join_to_args_ls$join_to_xx <- NULL
+    join_to_tsb <- rlang::exec(get_tsibble, data_xx = join_to_xx, !!!join_to_args_ls)
+    data_tsb <- dplyr::left_join(data_tsb, join_to_tsb)
+  }
+  return(data_tsb)
+}
 transform_to_shorthand <- function(data_tb,
                                    key_1L_chr = character(0),
                                    min_1L_int = 3L,
@@ -138,49 +163,44 @@ transform_to_temporal <- function(X_Ready4useDyad = ready4use::Ready4useDyad(),
   X_Ready4useDyad <- ready4use::update_dyad(X_Ready4useDyad, arrange_1L_chr = arrange_by_1L_chr, dictionary_r3 = dictionary_r3,  what_1L_chr = "dictionary")
 }
 transform_to_tsibble <- function(data_tb,
-                                 activity_1L_chr = "Activity",
-                                 athlete_roles_chr = c("Athlete", "AlumniAthlete"),
-                                 appointments_var_1L_chr = "Appointments",
-                                 cancellations_var_1L_chr = "Cancellations",
-                                 clinical_team_1L_chr = "Clinical Team",
-                                 clinician_1L_chr = "Clinician",
-                                 clinician_discipline_1L_chr = "Service",
-                                 components_chr = c("Year","Quarter", "Week"),
-                                 cost_var_1L_chr = "Cost",
+                                 # activity_1L_chr = "Activity",
+                                 # athlete_roles_chr = c("Athlete", "AlumniAthlete"),
+                                 # appointments_var_1L_chr = "Appointments",
+                                 # cancellations_var_1L_chr = "Cancellations",
+                                 # clinical_team_1L_chr = "Clinical Team",
+                                 # clinician_1L_chr = "Clinician",
+                                 # clinician_discipline_1L_chr = "Service",
+                                 # components_chr = c("Year","Quarter", "Week"),
+                                 # cost_var_1L_chr = "Cost",
                                  date_tfmn_fn = identity,
-                                 days_1L_chr = "Weekday",
-                                 duration_1L_chr = "Duration",
-                                 exclude_chr = "Group",#character(0),
-                                 fiscal_start_1L_int = 7L,
-                                 group_1L_chr = character(0),
+                                 # days_1L_chr = "Weekday",
+                                 # duration_1L_chr = "Duration",
+                                 # exclude_chr = "Group",#character(0),
+                                 # fiscal_start_1L_int = 7L,
+                                 # group_1L_chr = character(0),
+                                 focused_args_ls = NULL,
+                                 focused_fn = NULL,
                                  index_1L_chr = "Date",
-                                 is_wide_1L_lgl = F,
+                                 # is_wide_1L_lgl = F,
                                  key_vars_chr = character(0),
                                  metrics_chr = make_metric_vars(),
-                                 referrals_var_1L_chr = "Referrals",
-                                 referrers_1L_chr = "Referrer Role",
-                                 severity_1L_chr = "Severity",
-                                 team_disciplines_1L_chr = "Disciplines",
+                                 # referrals_var_1L_chr = "Referrals",
+                                 # referrers_1L_chr = "Referrer Role",
+                                 # severity_1L_chr = "Severity",
+                                 # team_disciplines_1L_chr = "Disciplines",
                                  temporal_vars_chr = make_temporal_vars(),
-                                 uid_var_1L_chr = "UID",
-                                 type_1L_chr = c("main", "focused"),
-                                 what_1L_chr = c("all", "totals")){
-  what_1L_chr <- match.arg(what_1L_chr)
+                                 # uid_var_1L_chr = "UID",
+                                 type_1L_chr = c("main", "focused")
+                                 # ,
+                                 # what_1L_chr = c("all", "totals")
+                                 ){
+  # what_1L_chr <- match.arg(what_1L_chr)
   type_1L_chr <- match.arg(type_1L_chr)
   if(type_1L_chr == "main"){
-    # key_vars_chr <- c("Role", "Age",  "Sex",   "ProviderState", "Severity", "Categorisation", "Para", "Aesthetic Sports", "Individual Sports", "Winter Sports",  "Service", "Referrer Role")
     data_tb <- make_metrics_summary(data_tb,
                                     index_1L_chr = index_1L_chr,
                                     key_vars_chr = key_vars_chr,
                                     metrics_chr = metrics_chr)
-    # data_tb <- dplyr::arrange(data_tb, !!rlang::sym(index_1L_chr))
-    # data_tb <- dplyr::select(data_tb, tidyselect::all_of(c(index_1L_chr,
-    #                                                         metrics_chr,#c(referrals_var_1L_chr, appointments_var_1L_chr, cancellations_var_1L_chr, cost_var_1L_chr),
-    #                                                         key_vars_chr))) %>%
-    #                             dplyr::group_by(dplyr::across(tidyselect::all_of(c(index_1L_chr,
-    #                                                                                key_vars_chr)))) %>%
-    #                             dplyr::summarise(dplyr::across(tidyselect::all_of(metrics_chr#c(referrals_var_1L_chr, appointments_var_1L_chr, cancellations_var_1L_chr, cost_var_1L_chr)
-    #                                                                               ), ~sum(.x, na.rm = T)), .groups = 'drop')
     if(identical(key_vars_chr, character(0))){
       cdl_key_xx <- NULL
     }else{
@@ -193,92 +213,91 @@ transform_to_tsibble <- function(data_tb,
                             key = key_vars_chr)
     }
   }else{
-    if(!is_wide_1L_lgl){
-      data_tb <- transform_to_prep(data_tb,
-                                   activity_1L_chr = activity_1L_chr,
-                                   athlete_roles_chr = athlete_roles_chr,
-                                   appointments_var_1L_chr = appointments_var_1L_chr,
-                                   cancellations_var_1L_chr = cancellations_var_1L_chr,
-                                   clinical_team_1L_chr = clinical_team_1L_chr,
-                                   clinician_1L_chr = clinician_1L_chr,
-                                   clinician_discipline_1L_chr =clinician_discipline_1L_chr,
-                                   components_chr = components_chr,
-                                   cost_var_1L_chr = cost_var_1L_chr,
-                                   days_1L_chr = days_1L_chr,
-                                   duration_1L_chr = duration_1L_chr,
-                                   exclude_chr = exclude_chr,#character(0),
-                                   group_1L_chr = group_1L_chr,
-                                   index_1L_chr = index_1L_chr,
-                                   referrals_var_1L_chr = referrals_var_1L_chr,
-                                   referrers_1L_chr = referrers_1L_chr,
-                                   severity_1L_chr = severity_1L_chr,
-                                   team_disciplines_1L_chr = team_disciplines_1L_chr,
-                                   uid_var_1L_chr = uid_var_1L_chr,
-                                   what_1L_chr = "prep")
-      #}
-      metrics_chr <- make_metric_vars(appointments_var_1L_chr = appointments_var_1L_chr,
-                                      cancellations_var_1L_chr = cancellations_var_1L_chr,
-                                      cost_var_1L_chr = cost_var_1L_chr,
-                                      referrals_var_1L_chr = referrals_var_1L_chr)
-      if(identical(key_vars_chr, character(0))){
-        key_vars_chr <- get_key_vars(data_tb,
-                                     activity_1L_chr = activity_1L_chr,
-                                     athlete_roles_chr = athlete_roles_chr,
-                                     appointments_var_1L_chr = appointments_var_1L_chr,
-                                     cancellations_var_1L_chr = cancellations_var_1L_chr,
-                                     clinical_team_1L_chr = clinical_team_1L_chr,
-                                     clinician_1L_chr = clinician_1L_chr,
-                                     clinician_discipline_1L_chr =clinician_discipline_1L_chr,
-                                     components_chr = components_chr,
-                                     cost_var_1L_chr = cost_var_1L_chr,
-                                     days_1L_chr = days_1L_chr,
-                                     duration_1L_chr = duration_1L_chr,
-                                     exclude_chr = exclude_chr,#character(0),
-                                     group_1L_chr = group_1L_chr,
-                                     index_1L_chr = index_1L_chr,
-                                     referrals_var_1L_chr = referrals_var_1L_chr,
-                                     referrers_1L_chr = referrers_1L_chr,
-                                     severity_1L_chr = severity_1L_chr,
-                                     team_disciplines_1L_chr = team_disciplines_1L_chr,
-                                     uid_var_1L_chr = uid_var_1L_chr)#names(data_tb) %>% setdiff(c(index_1L_chr, metrics_chr))
-      }
-      #if(!is_wide_1L_lgl){
-      #metrics_chr <- make_metric_vars()
-      data_tb <- transform_to_prep(data_tb,
-                                   appointments_var_1L_chr = metrics_chr[2],
-                                   cancellations_var_1L_chr = metrics_chr[3],
-                                   cost_var_1L_chr = metrics_chr[4],
-                                   index_1L_chr = index_1L_chr,
-                                   referrals_var_1L_chr = metrics_chr[1],
-                                   what_1L_chr = "prep")
-      data_tb <- dplyr::select(data_tb, tidyr::all_of(c(index_1L_chr,metrics_chr,key_vars_chr)))
-      data_tb <- data_tb %>%
-        dplyr::mutate(!!rlang::sym(index_1L_chr) := date_tfmn_fn(!!rlang::sym(index_1L_chr))) %>%
-        dplyr::group_by(dplyr::across(tidyr::all_of(c(index_1L_chr, key_vars_chr)))) %>%
-        #dplyr::summarise(dplyr::across(.cols = dplyr::everything(),.fns = ~sum(.x, na.rm = TRUE))) %>% ## DOES NOT WORK - NEED TO CHECK WHY
-        ## INSTEAD USING BELOW CALL
-        dplyr::summarise(!!rlang::sym(metrics_chr[1]) := sum(!!rlang::sym(metrics_chr[1]) , na.rm = TRUE),
-                         !!rlang::sym(metrics_chr[2])  := sum(!!rlang::sym(metrics_chr[2]) , na.rm = TRUE),
-                         !!rlang::sym(metrics_chr[3])  := sum(!!rlang::sym(metrics_chr[3]) , na.rm = TRUE),
-                         !!rlang::sym(metrics_chr[4])  := sum(!!rlang::sym(metrics_chr[4]) , na.rm = TRUE)) %>%
-        dplyr::ungroup()
-      data_tsb <- data_tb %>% tsibble::as_tsibble(key = key_vars_chr, index = index_1L_chr)
-      if(what_1L_chr == "totals"){
-        data_tsb <- data_tsb %>%  dplyr::select(tidyr::all_of(c(index_1L_chr, metrics_chr))) %>%
-          # dplyr::summarise(!!rlang::sym(metrics_chr[4])  := sum(!!rlang::sym(metrics_chr[4]) , na.rm = TRUE))
-          dplyr::summarise(!!rlang::sym(metrics_chr[1]) := sum(!!rlang::sym(metrics_chr[1]) , na.rm = TRUE),
-                           !!rlang::sym(metrics_chr[2])  := sum(!!rlang::sym(metrics_chr[2]) , na.rm = TRUE),
-                           !!rlang::sym(metrics_chr[3])  := sum(!!rlang::sym(metrics_chr[3]) , na.rm = TRUE),
-                           !!rlang::sym(metrics_chr[4])  := sum(!!rlang::sym(metrics_chr[4]) , na.rm = TRUE))
-      }
-    }else{
-      data_tsb <- data_tb %>%
-        dplyr::mutate(!!rlang::sym(index_1L_chr) := date_tfmn_fn(!!rlang::sym(index_1L_chr))) %>%
-        dplyr::group_by(!!rlang::sym(index_1L_chr)) %>%
-        dplyr::summarise(dplyr::across(.cols = dplyr::everything(),.fns = sum)) %>%
-        dplyr::ungroup() %>%
-        tsibble::as_tsibble(index = index_1L_chr)
-    }
+    data_tsb <- rlang::exec(focused_fn, data_tb, !!!focused_args_ls)
+    # if(!is_wide_1L_lgl){
+      # data_tb <- transform_to_prep(data_tb,
+      #                              activity_1L_chr = activity_1L_chr,
+      #                              athlete_roles_chr = athlete_roles_chr,
+      #                              appointments_var_1L_chr = appointments_var_1L_chr,
+      #                              cancellations_var_1L_chr = cancellations_var_1L_chr,
+      #                              clinical_team_1L_chr = clinical_team_1L_chr,
+      #                              clinician_1L_chr = clinician_1L_chr,
+      #                              clinician_discipline_1L_chr =clinician_discipline_1L_chr,
+      #                              components_chr = components_chr,
+      #                              cost_var_1L_chr = cost_var_1L_chr,
+      #                              days_1L_chr = days_1L_chr,
+      #                              duration_1L_chr = duration_1L_chr,
+      #                              exclude_chr = exclude_chr,#character(0),
+      #                              group_1L_chr = group_1L_chr,
+      #                              index_1L_chr = index_1L_chr,
+      #                              referrals_var_1L_chr = referrals_var_1L_chr,
+      #                              referrers_1L_chr = referrers_1L_chr,
+      #                              severity_1L_chr = severity_1L_chr,
+      #                              team_disciplines_1L_chr = team_disciplines_1L_chr,
+      #                              uid_var_1L_chr = uid_var_1L_chr,
+      #                              what_1L_chr = "prep")
+      # #}
+      # metrics_chr <- make_metric_vars(appointments_var_1L_chr = appointments_var_1L_chr,
+      #                                 cancellations_var_1L_chr = cancellations_var_1L_chr,
+      #                                 cost_var_1L_chr = cost_var_1L_chr,
+      #                                 referrals_var_1L_chr = referrals_var_1L_chr)
+      # if(identical(key_vars_chr, character(0))){
+      #   key_vars_chr <- get_key_vars(data_tb,
+      #                                activity_1L_chr = activity_1L_chr,
+      #                                athlete_roles_chr = athlete_roles_chr,
+      #                                appointments_var_1L_chr = appointments_var_1L_chr,
+      #                                cancellations_var_1L_chr = cancellations_var_1L_chr,
+      #                                clinical_team_1L_chr = clinical_team_1L_chr,
+      #                                clinician_1L_chr = clinician_1L_chr,
+      #                                clinician_discipline_1L_chr =clinician_discipline_1L_chr,
+      #                                components_chr = components_chr,
+      #                                cost_var_1L_chr = cost_var_1L_chr,
+      #                                days_1L_chr = days_1L_chr,
+      #                                duration_1L_chr = duration_1L_chr,
+      #                                exclude_chr = exclude_chr,#character(0),
+      #                                group_1L_chr = group_1L_chr,
+      #                                index_1L_chr = index_1L_chr,
+      #                                referrals_var_1L_chr = referrals_var_1L_chr,
+      #                                referrers_1L_chr = referrers_1L_chr,
+      #                                severity_1L_chr = severity_1L_chr,
+      #                                team_disciplines_1L_chr = team_disciplines_1L_chr,
+      #                                uid_var_1L_chr = uid_var_1L_chr)#names(data_tb) %>% setdiff(c(index_1L_chr, metrics_chr))
+      # }
+      # data_tb <- transform_to_prep(data_tb,
+      #                              appointments_var_1L_chr = metrics_chr[2],
+      #                              cancellations_var_1L_chr = metrics_chr[3],
+      #                              cost_var_1L_chr = metrics_chr[4],
+      #                              index_1L_chr = index_1L_chr,
+      #                              referrals_var_1L_chr = metrics_chr[1],
+      #                              what_1L_chr = "prep")
+      # data_tb <- dplyr::select(data_tb, tidyr::all_of(c(index_1L_chr,metrics_chr,key_vars_chr)))
+      # data_tb <- data_tb %>%
+      #   dplyr::mutate(!!rlang::sym(index_1L_chr) := date_tfmn_fn(!!rlang::sym(index_1L_chr))) %>%
+      #   dplyr::group_by(dplyr::across(tidyr::all_of(c(index_1L_chr, key_vars_chr)))) %>%
+      #   #dplyr::summarise(dplyr::across(.cols = dplyr::everything(),.fns = ~sum(.x, na.rm = TRUE))) %>% ## DOES NOT WORK - NEED TO CHECK WHY
+      #   ## INSTEAD USING BELOW CALL
+      #   dplyr::summarise(!!rlang::sym(metrics_chr[1]) := sum(!!rlang::sym(metrics_chr[1]) , na.rm = TRUE),
+      #                    !!rlang::sym(metrics_chr[2])  := sum(!!rlang::sym(metrics_chr[2]) , na.rm = TRUE),
+      #                    !!rlang::sym(metrics_chr[3])  := sum(!!rlang::sym(metrics_chr[3]) , na.rm = TRUE),
+      #                    !!rlang::sym(metrics_chr[4])  := sum(!!rlang::sym(metrics_chr[4]) , na.rm = TRUE)) %>%
+      #   dplyr::ungroup()
+      # data_tsb <- data_tb %>% tsibble::as_tsibble(key = key_vars_chr, index = index_1L_chr)
+      # if(what_1L_chr == "totals"){
+      #   data_tsb <- data_tsb %>%  dplyr::select(tidyr::all_of(c(index_1L_chr, metrics_chr))) %>%
+      #     # dplyr::summarise(!!rlang::sym(metrics_chr[4])  := sum(!!rlang::sym(metrics_chr[4]) , na.rm = TRUE))
+      #     dplyr::summarise(!!rlang::sym(metrics_chr[1]) := sum(!!rlang::sym(metrics_chr[1]) , na.rm = TRUE),
+      #                      !!rlang::sym(metrics_chr[2])  := sum(!!rlang::sym(metrics_chr[2]) , na.rm = TRUE),
+      #                      !!rlang::sym(metrics_chr[3])  := sum(!!rlang::sym(metrics_chr[3]) , na.rm = TRUE),
+      #                      !!rlang::sym(metrics_chr[4])  := sum(!!rlang::sym(metrics_chr[4]) , na.rm = TRUE))
+      # }
+    # }else{
+    #   data_tsb <- data_tb %>%
+    #     dplyr::mutate(!!rlang::sym(index_1L_chr) := date_tfmn_fn(!!rlang::sym(index_1L_chr))) %>%
+    #     dplyr::group_by(!!rlang::sym(index_1L_chr)) %>%
+    #     dplyr::summarise(dplyr::across(.cols = dplyr::everything(),.fns = sum)) %>%
+    #     dplyr::ungroup() %>%
+    #     tsibble::as_tsibble(index = index_1L_chr)
+    # }
   }
 
   return(data_tsb)

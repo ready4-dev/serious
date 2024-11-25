@@ -21,9 +21,9 @@ plot_forecast(
 \item{x_label_1L_chr}{X label (a character vector of length one), Default: ''}
 }
 \value{
-No return value, called for side effects.
+Plot (an output object of multiple potential types)
 }
 \description{
-plot_forecast() is a Plot function that plots data. Specifically, this function implements an algorithm to plot forecast. The function is called for its side effects and does not return a value.
+plot_forecast() is a Plot function that plots data. Specifically, this function implements an algorithm to plot forecast. The function returns Plot (an output object of multiple potential types).
 }
 \keyword{internal}

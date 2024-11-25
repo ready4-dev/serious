@@ -7,7 +7,7 @@
 make_retainers(
   retainers_tb,
   as_tsibble_1L_lgl = FALSE,
-  censor_1L_lgl = TRUE,
+  censor_1L_lgl = FALSE,
   cumulatives_1L_lgl = FALSE,
   cost_var_1L_chr = "Retainer amount",
   data_tb = NULL,
@@ -17,9 +17,11 @@ make_retainers(
   end_date_dtm = NULL,
   fill_gaps_1L_lgl = FALSE,
   fiscal_start_1L_int = 7L,
-  offset_1L_int = -1,
+  index_1L_chr = "Date",
+  offset_1L_int = integer(0),
   provider_id_1L_chr = "ProviderID",
   reset_new_1L_lgl = TRUE,
+  start_date_dtm = NULL,
   unit_1L_chr = "days"
 )
 }
@@ -28,7 +30,7 @@ make_retainers(
 
 \item{as_tsibble_1L_lgl}{As tsibble (a logical vector of length one), Default: FALSE}
 
-\item{censor_1L_lgl}{Censor (a logical vector of length one), Default: TRUE}
+\item{censor_1L_lgl}{Censor (a logical vector of length one), Default: FALSE}
 
 \item{cumulatives_1L_lgl}{Cumulatives (a logical vector of length one), Default: FALSE}
 
@@ -48,11 +50,15 @@ make_retainers(
 
 \item{fiscal_start_1L_int}{Fiscal start (an integer vector of length one), Default: 7}
 
-\item{offset_1L_int}{Offset (an integer vector of length one), Default: -1}
+\item{index_1L_chr}{Index (a character vector of length one), Default: 'Date'}
+
+\item{offset_1L_int}{Offset (an integer vector of length one), Default: integer(0)}
 
 \item{provider_id_1L_chr}{Provider identity (a character vector of length one), Default: 'ProviderID'}
 
 \item{reset_new_1L_lgl}{Reset new (a logical vector of length one), Default: TRUE}
+
+\item{start_date_dtm}{Start date (a date vector), Default: NULL}
 
 \item{unit_1L_chr}{Unit (a character vector of length one), Default: 'days'}
 }

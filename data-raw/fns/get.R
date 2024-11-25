@@ -67,6 +67,34 @@ get_medicare_data <- function(path_1L_chr = character(0),
   return(medicare_tb)
 
 }
+get_model_predrs <- function(ts_models_ls = make_ts_models_ls()){
+  predictors_chr <- cumulatives_chr <- contributors_chr <- joins_chr <-character(0)
+  if(!identical(ts_models_ls$predictor_args_ls, make_tfmn_args_ls())){
+    predictors_chr <- ts_models_ls$predictor_args_ls$metrics_chr
+  }
+  if(!identical(ts_models_ls$cumulatives_args_ls, make_tfmn_args_ls())){
+    contributors_chr <- ts_models_ls$cumulatives_args_ls$metrics_chr
+    cumulatives_chr <- paste0(ts_models_ls$cumulatives_args_ls$prefix_1L_chr,
+                              ts_models_ls$cumulatives_args_ls$metrics_chr)
+  }
+  if(!identical(ts_models_ls$join_args_ls, make_tfmn_args_ls())){ ######################
+    if(ts_models_ls$join_args_ls$type_1L_chr == "cumulative"){
+      join_contributors_chr <- ts_models_ls$join_args_ls$metrics_chr
+      joins_chr <- paste0(ts_models_ls$join_args_ls$prefix_1L_chr,
+                          ts_models_ls$join_args_ls$metrics_chr)
+    }else{
+      join_contributors_chr <- character(0)
+      joins_chr <- ts_models_ls$join_args_ls$metrics_chr
+    }
+
+  }
+  model_predrs_ls <- list(predictors_chr = predictors_chr,
+                          contributors_chr = contributors_chr,
+                          cumulatives_chr = cumulatives_chr,
+                          join_contributors_chr = join_contributors_chr,
+                          joins_chr = joins_chr)
+  return(model_predrs_ls)
+}
 get_new_index <- function(frequency_1L_chr = c("daily", "weekly",
                                                "monthly", "quarterly", "yearly", "fiscal",
                                                "sub", "fiscalyear", "fiscalquarter", "weekday")){
@@ -84,20 +112,27 @@ get_new_index <- function(frequency_1L_chr = c("daily", "weekly",
                              weekday = "Weekday")
   return(new_index_1L_chr)
 }
-get_performance <- function(ts_mdls_ls,
-                            data_xx,
-                            metric_1L_chr = make_metric_vars(),
-                            rank_by_int = integer(0),
-                            statistics_chr = c("RMSE", "MAE", "MPE", "MAPE")){
-  metric_1L_chr <- match.arg(metric_1L_chr)
+get_performance <- function (ts_mdls_ls, data_xx, metric_1L_chr,
+                             rank_by_int = integer(0), statistics_chr = c("RMSE", "MAE",
+                                                                          "MPE", "MAPE"),
+                             type_1L_chr = c("accuracy", "report")){
+  type_1L_chr <- match.arg(type_1L_chr)
   data_tsb <- get_tsibble(data_xx, frequency_1L_chr = ts_mdls_ls$args_ls$frequency_1L_chr,
                           key_totals_ls = ts_mdls_ls$args_ls$key_totals_ls, key_vars_chr = ts_mdls_ls$args_ls$key_vars_chr,
+                          metrics_chr = metric_1L_chr,
                           type_1L_chr = ts_mdls_ls$args_ls$type_1L_chr, what_1L_chr = ts_mdls_ls$args_ls$what_1L_chr)
-  performance_tb <- ts_mdls_ls$fabels_ls %>% purrr::pluck(metric_1L_chr) %>% fabletools::accuracy(data_tsb)
-  if(!identical(statistics_chr, character(0))){
-    performance_tb <- performance_tb %>% dplyr::select(.model, statistics_chr)
+  if(type_1L_chr == "accuracy"){
+    performance_tb <- ts_mdls_ls$fabels_ls %>% purrr::pluck(metric_1L_chr) %>%
+      fabletools::accuracy(data_tsb)
+  }else{
+    performance_tb <- ts_mdls_ls$mabels_ls %>% purrr::pluck(metric_1L_chr) %>% fabletools::report()
+    statistics_chr <- setdiff(names(performance_tb),c(".model", intersect(c(ts_mdls_ls$args_ls$what_1L_chr,ts_mdls_ls$args_ls$key_vars_chr), names(performance_tb))))
   }
-  if(!identical(rank_by_int, integer(0))){
+  if (!identical(statistics_chr, character(0))) {
+    performance_tb <- performance_tb %>% dplyr::select(.model, intersect(c(ts_mdls_ls$args_ls$what_1L_chr,ts_mdls_ls$args_ls$key_vars_chr), names(performance_tb)),
+                                                       statistics_chr)
+  }
+  if (!identical(rank_by_int, integer(0))) {
     performance_tb <- performance_tb %>% dplyr::arrange(!!rlang::sym(statistics_chr[rank_by_int]))
   }
   return(performance_tb)
@@ -175,116 +210,113 @@ get_temporal_fn <- function(period_1L_chr = make_temporal_vars(index_1L_chr = "S
   return(temporal_fn)
 
 }
-get_tsibble <- function(data_xx,
-                        fill_gaps_1L_lgl = FALSE,
-                        frequency_1L_chr = c("daily","weekly",
-                                             "monthly", "quarterly",  "yearly", "fiscal"),
-                        # index_type_1L_chr = c("daily","weekly",
-                        #                       "monthly", "quarterly", "yearly", "fiscal"),
-                        key_totals_ls = NULL,
-                        key_vars_chr = character(0),
-                        metrics_chr = make_metric_vars(),
-                        prefix_1L_chr = "Cumulative",
-                        type_1L_chr = c("totals","key", "wide", "main", "cumulative"),
-                        what_1L_chr = character(0)){
+get_tsibble <- function (data_xx, fill_gaps_1L_lgl = FALSE,
+                         frequency_1L_chr = c("daily",
+                                              "weekly", "monthly", "quarterly", "yearly", "fiscal"),
+                         key_totals_ls = NULL,
+                         key_vars_chr = character(0),
+                         metrics_chr = character(0),
+                         prefix_1L_chr = "Cumulative",
+                         type_1L_chr = c("totals", "key",
+                                         "wide", "main", "cumulative"),
+                         what_1L_chr = character(0))
+{
   frequency_1L_chr <- match.arg(frequency_1L_chr)
-  #index_type_1L_chr <- match.arg(index_type_1L_chr)
   type_1L_chr <- match.arg(type_1L_chr)
-  if(!tsibble::is_tsibble(data_xx) & !inherits(data_xx,"Ready4useDyad")){
-    # else{
+  if(identical(metrics_chr, character(0))){
+    metrics_chr <- make_metric_vars()
+  }
+  if (!tsibble::is_tsibble(data_xx) & !inherits(data_xx, "Ready4useDyad")) {
     assertthat::assert_that(is.list(data_xx))
-    data_xx <- purrr::pluck(data_xx, paste0(type_1L_chr,"_dss_ls")) %>% purrr::pluck(frequency_1L_chr)
-    # }
-    if(!tsibble::is_tsibble(data_xx)){
+    data_xx <- purrr::pluck(data_xx, paste0(type_1L_chr,
+                                            "_dss_ls")) %>% purrr::pluck(frequency_1L_chr)
+    if (!tsibble::is_tsibble(data_xx)) {
       data_tsb <- purrr::pluck(data_xx, what_1L_chr)
-    }else{
+    }
+    else {
       data_tsb <- data_xx
     }
-  }else{
-    if(inherits(data_xx,"Ready4useDyad")){
+  }
+  else {
+    if (inherits(data_xx, "Ready4useDyad")) {
       data_xx <- data_xx@ds_tb
     }
     data_tsb <- data_xx
     index_1L_chr <- data_tsb %>% tsibble::index() %>% as.character()
     index_type_1L_chr <- get_index_type(data_tsb, index_1L_chr = index_1L_chr)
-    start_at_1L_int <- which(index_type_1L_chr==c("daily", "weekly", "monthly",
-                                                  "quarterly", "yearly", "fiscal"))
+    start_at_1L_int <- which(index_type_1L_chr == c("daily",
+                                                    "weekly", "monthly", "quarterly", "yearly", "fiscal"))
     temporal_vars_chr <- make_temporal_vars()
     temporal_vars_chr <- temporal_vars_chr[start_at_1L_int:length(temporal_vars_chr)]
-    if(start_at_1L_int > 1)
-      temporal_vars_chr <- temporal_vars_chr[1:length(temporal_vars_chr)-1]
-
-
-    if(identical(key_vars_chr, character(0))){
-      if(!identical(what_1L_chr, character(0))){
-        if(what_1L_chr %in% names(data_tsb)){
+    if (start_at_1L_int > 1)
+      temporal_vars_chr <- temporal_vars_chr[1:length(temporal_vars_chr) -
+                                               1]
+    if (identical(key_vars_chr, character(0))) {
+      if (!identical(what_1L_chr, character(0))) {
+        if (what_1L_chr %in% names(data_tsb)) {
           key_vars_chr <- what_1L_chr
-        }else{
-          key_vars_chr <- get_vars(data_tsb, index_1L_chr = index_1L_chr, what_1L_chr = what_1L_chr)
+        }
+        else {
+          key_vars_chr <- get_vars(data_tsb, index_1L_chr = index_1L_chr,
+                                   what_1L_chr = what_1L_chr)
         }
       }
     }
-    if(!identical(key_vars_chr, character(0))){
-      if(!is.null(key_totals_ls)){
+    if (!identical(key_vars_chr, character(0))) {
+      if (!is.null(key_totals_ls)) {
         data_tsb <- purrr::reduce(1:length(key_totals_ls),
-                                  .init = data_tsb,
-                                  ~
-                                    .x %>% dplyr::filter(!!rlang::sym(names(key_totals_ls)[.y]) != key_totals_ls[[.y]])
-
-        )
+                                  .init = data_tsb, ~.x %>% dplyr::filter(!!rlang::sym(names(key_totals_ls)[.y]) !=
+                                                                            key_totals_ls[[.y]]))
       }
-      data_tsb <- transform_to_tsibble(data_tsb, index_1L_chr = index_1L_chr, key_vars_chr = key_vars_chr, metrics_chr = metrics_chr, temporal_vars_chr = temporal_vars_chr)
+      data_tsb <- transform_to_tsibble(data_tsb, index_1L_chr = index_1L_chr,
+                                       key_vars_chr = key_vars_chr, metrics_chr = metrics_chr,
+                                       temporal_vars_chr = temporal_vars_chr)
     }
-    #if(frequency_1L_chr != "daily"){
     new_index_1L_chr <- get_new_index(frequency_1L_chr)
-    # switch(frequency_1L_chr,
-    #                          daily = "Day",
-    #                          weekly = "Week",
-    #                          monthly = "Month",
-    #                          quarterly = "Quarter",
-    #                          yearly = "Year",
-    #                          fiscal = "FiscalYQ")
-    data_tsb <- data_tsb %>%
-      # dplyr::select(Sex, tidyselect::all_of(metrics_chr), tidyselect::any_of(c("Week", "Month", "Quarter", "Year"))) %>%
-      tsibble::group_by_key() %>%
-      tsibble::index_by(!!rlang::sym(new_index_1L_chr)) %>% # monthly aggregates
-      dplyr::summarise(dplyr::across(tidyselect::all_of(metrics_chr), ~sum(.x, na.rm = T)))  %>%
-      dplyr::ungroup()
-    if(type_1L_chr == "wide"){
-      data_tsb <- data_tsb %>%
-        dplyr::select(!!rlang::sym(new_index_1L_chr), dplyr::everything())
-      data_tsb <- data_tsb %>%
-        tsibble::update_tsibble(index = !!rlang::sym(new_index_1L_chr))
-    }else{
-      if(identical(key_vars_chr, character(0))){
-        filtered_tb <- data_tsb %>%
-          tsibble::as_tibble() %>%
-          dplyr::select(!!rlang::sym(new_index_1L_chr), tidyselect::all_of(metrics_chr))
+    data_tsb <- data_tsb %>% tsibble::group_by_key() %>%
+      tsibble::index_by(!!rlang::sym(new_index_1L_chr)) %>%
+      dplyr::summarise(dplyr::across(tidyselect::all_of(metrics_chr),
+                                     ~sum(.x, na.rm = T))) %>% dplyr::ungroup()
+    if (type_1L_chr == "wide") {
+      data_tsb <- data_tsb %>% dplyr::select(!!rlang::sym(new_index_1L_chr),
+                                             dplyr::everything())
+      data_tsb <- data_tsb %>% tsibble::update_tsibble(index = !!rlang::sym(new_index_1L_chr))
+    }
+    else {
+      if (identical(key_vars_chr, character(0))) {
+        filtered_tb <- data_tsb %>% tsibble::as_tibble() %>%
+          dplyr::select(!!rlang::sym(new_index_1L_chr),
+                        tidyselect::all_of(metrics_chr))
         key_vars_chr <- NULL
-      }else{
-        filtered_tb <- data_tsb %>%
-          tsibble::as_tibble() %>%
-          dplyr::select(!!rlang::sym(new_index_1L_chr), #!!rlang::sym(what_1L_chr),
-                        tidyselect::all_of(c(key_vars_chr,metrics_chr)))
-        #key_vars_chr <- what_1L_chr
       }
-      data_tsb <- filtered_tb %>% transform_to_tsibble(index_1L_chr = new_index_1L_chr, metrics_chr = metrics_chr, temporal_vars_chr = character(0), key_vars_chr = key_vars_chr)
-      if(type_1L_chr == "cumulative"){
-        base_index_1L_chr <- tsibble::index(data_xx) %>% as.character()
-        start_tsb <- data_xx %>% dplyr::filter(!!rlang::sym(base_index_1L_chr) == min(!!rlang::sym(base_index_1L_chr)))
-        starting_dbl <- metrics_chr %>%
-          purrr::map_dbl(~{
-            ifelse(paste0(prefix_1L_chr,.x) %in% names(start_tsb),
-                   dplyr::mutate(start_tsb, !!rlang::sym(paste0("PreExistingCumulative",.x)) := !!rlang::sym(paste0(prefix_1L_chr,.x)) - !!rlang::sym(.x)) %>% dplyr::pull(!!rlang::sym(paste0("PreExistingCumulative",.x))),
-                   0)
-          })
-        data_tsb <- data_tsb %>% add_cumulatives(metrics_chr = metrics_chr, arrange_by_1L_chr = new_index_1L_chr, prefix_1L_chr = prefix_1L_chr, starting_dbl = starting_dbl) %>% dplyr::select(-tidyselect::all_of(metrics_chr))
+      else {
+        filtered_tb <- data_tsb %>% tsibble::as_tibble() %>%
+          dplyr::select(!!rlang::sym(new_index_1L_chr),
+                        tidyselect::all_of(c(key_vars_chr, metrics_chr)))
+      }
+      data_tsb <- filtered_tb %>% transform_to_tsibble(index_1L_chr = new_index_1L_chr, key_vars_chr = key_vars_chr,
+                                                       metrics_chr = metrics_chr, temporal_vars_chr = character(0))
+      if (type_1L_chr == "cumulative") {
+        base_index_1L_chr <- tsibble::index(data_xx) %>%
+          as.character()
+        start_tsb <- data_xx %>% dplyr::filter(!!rlang::sym(base_index_1L_chr) ==
+                                                 min(!!rlang::sym(base_index_1L_chr)))
+        starting_dbl <- metrics_chr %>% purrr::map_dbl(~{
+          ifelse(paste0(prefix_1L_chr, .x) %in% names(start_tsb),
+                 dplyr::mutate(start_tsb, `:=`(!!rlang::sym(paste0("PreExistingCumulative",
+                                                                   .x)), !!rlang::sym(paste0(prefix_1L_chr,
+                                                                                             .x)) - !!rlang::sym(.x))) %>% dplyr::pull(!!rlang::sym(paste0("PreExistingCumulative",
+                                                                                                                                                           .x))), 0)
+        })
+        data_tsb <- data_tsb %>% add_cumulatives(metrics_chr = metrics_chr,
+                                                 arrange_by_1L_chr = new_index_1L_chr, prefix_1L_chr = prefix_1L_chr,
+                                                 starting_dbl = starting_dbl) %>% dplyr::select(-tidyselect::all_of(metrics_chr))
       }
     }
-    #}
   }
-  if(fill_gaps_1L_lgl){
-    data_tsb <- eval(parse(text = paste0("tsibble::fill_gaps(data_tsb, ",paste0(metrics_chr,"=0", collapse=","),")") ))
+  if (fill_gaps_1L_lgl) {
+    data_tsb <- eval(parse(text = paste0("tsibble::fill_gaps(data_tsb, ",
+                                         paste0(metrics_chr, "=0", collapse = ","), ")")))
   }
   return(data_tsb)
 }

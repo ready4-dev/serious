@@ -6,15 +6,22 @@
 \usage{
 plot_lags(
   data_xx,
+  arrow_1L_lgl = F,
   frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly"),
   key_totals_ls = NULL,
   key_vars_chr = character(0),
+  lags_int = integer(0),
   metrics_chr = make_metric_vars(),
-  prefix_1L_chr = "Lagged "
+  period_1L_chr = NULL,
+  prefix_1L_chr = "Lagged ",
+  type_1L_chr = c("path", "point"),
+  ...
 )
 }
 \arguments{
 \item{data_xx}{Data (an output object of multiple potential types)}
+
+\item{arrow_1L_lgl}{Arrow (a logical vector of length one), Default: F}
 
 \item{frequency_1L_chr}{Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly")}
 
@@ -22,14 +29,22 @@ plot_lags(
 
 \item{key_vars_chr}{Key variables (a character vector), Default: character(0)}
 
+\item{lags_int}{Lags (an integer vector), Default: integer(0)}
+
 \item{metrics_chr}{Metrics (a character vector), Default: make_metric_vars()}
 
+\item{period_1L_chr}{Period (a character vector of length one), Default: NULL}
+
 \item{prefix_1L_chr}{Prefix (a character vector of length one), Default: 'Lagged '}
+
+\item{type_1L_chr}{Type (a character vector of length one), Default: c("path", "point")}
+
+\item{...}{Additional arguments}
 }
 \value{
-No return value, called for side effects.
+Plot (an output object of multiple potential types)
 }
 \description{
-plot_lags() is a Plot function that plots data. Specifically, this function implements an algorithm to plot lags. The function is called for its side effects and does not return a value.
+plot_lags() is a Plot function that plots data. Specifically, this function implements an algorithm to plot lags. The function returns Plot (an output object of multiple potential types).
 }
 \keyword{internal}

@@ -1,13 +1,13 @@
 #' Plot autocorrelations
-#' @description plot_autocorrelations() is a Plot function that plots data. Specifically, this function implements an algorithm to plot autocorrelations. The function is called for its side effects and does not return a value.
+#' @description plot_autocorrelations() is a Plot function that plots data. Specifically, this function implements an algorithm to plot autocorrelations. The function returns Plot (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
 #' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly")
 #' @param max_1L_int Maximum (an integer vector of length one), Default: NULL
 #' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
-#' @return No return value, called for side effects.
+#' @return Plot (an output object of multiple potential types)
 #' @rdname plot_autocorrelations
 #' @export 
-#' @importFrom purrr map2
+#' @importFrom purrr map2 pluck
 #' @importFrom feasts autoplot
 #' @importFrom ggplot2 labs
 #' @importFrom Hmisc capitalize
@@ -19,14 +19,21 @@ plot_autocorrelations <- function (data_xx, frequency_1L_chr = c("daily", "weekl
     autocorrelations_ls <- calculate_autocorrelations(data_xx = data_xx, 
         frequency_1L_chr = frequency_1L_chr, max_1L_int = max_1L_int, 
         metrics_chr = metrics_chr)
-    purrr::map2(autocorrelations_ls, names(autocorrelations_ls), 
+    plot_ls <- purrr::map2(autocorrelations_ls, names(autocorrelations_ls), 
         ~{
             .x %>% feasts::autoplot() + ggplot2::labs(title = paste0(Hmisc::capitalize(frequency_1L_chr), 
                 " Autocorrelations For ", .y))
         })
+    if (length(plot_ls) > 1) {
+        plot_xx <- plot_ls
+    }
+    else {
+        plot_xx <- plot_ls %>% purrr::pluck(1)
+    }
+    return(plot_xx)
 }
 #' Plot decomposition
-#' @description plot_decomposition() is a Plot function that plots data. Specifically, this function implements an algorithm to plot decomposition. The function is called for its side effects and does not return a value.
+#' @description plot_decomposition() is a Plot function that plots data. Specifically, this function implements an algorithm to plot decomposition. The function returns Plot (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
 #' @param colours_chr Colours (a character vector), Default: c("gray", "#D55E00")
 #' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly")
@@ -35,10 +42,10 @@ plot_autocorrelations <- function (data_xx, frequency_1L_chr = c("daily", "weekl
 #' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
 #' @param what_1L_chr What (a character vector of length one), Default: c("all", "adjusted", "trend")
 #' @param x_label_1L_chr X label (a character vector of length one), Default: ''
-#' @return No return value, called for side effects.
+#' @return Plot (an output object of multiple potential types)
 #' @rdname plot_decomposition
 #' @export 
-#' @importFrom purrr map
+#' @importFrom purrr map pluck
 #' @importFrom dplyr select
 #' @importFrom rlang sym
 #' @importFrom fabletools model components
@@ -53,7 +60,7 @@ plot_decomposition <- function (data_xx, colours_chr = c("gray", "#D55E00"), fre
 {
     frequency_1L_chr <- match.arg(frequency_1L_chr)
     what_1L_chr <- match.arg(what_1L_chr)
-    metrics_chr %>% purrr::map(~{
+    plot_ls <- metrics_chr %>% purrr::map(~{
         slim_tsb <- get_tsibble(data_xx, frequency_1L_chr = frequency_1L_chr, 
             key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr, 
             metrics_chr = .x) %>% dplyr::select(!!rlang::sym(.x))
@@ -81,19 +88,26 @@ plot_decomposition <- function (data_xx, colours_chr = c("gray", "#D55E00"), fre
             }
         }
     })
+    if (length(plot_ls) > 1) {
+        plot_xx <- plot_ls
+    }
+    else {
+        plot_xx <- plot_ls %>% purrr::pluck(1)
+    }
+    return(plot_xx)
 }
 #' Plot forecast
-#' @description plot_forecast() is a Plot function that plots data. Specifically, this function implements an algorithm to plot forecast. The function is called for its side effects and does not return a value.
+#' @description plot_forecast() is a Plot function that plots data. Specifically, this function implements an algorithm to plot forecast. The function returns Plot (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
 #' @param ts_models_ls Time series models (a list)
 #' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
 #' @param x_label_1L_chr X label (a character vector of length one), Default: ''
-#' @return No return value, called for side effects.
+#' @return Plot (an output object of multiple potential types)
 #' @rdname plot_forecast
 #' @export 
-#' @importFrom rlang exec sym
 #' @importFrom tsibble index filter_index
 #' @importFrom dplyr pull select
+#' @importFrom rlang sym
 #' @importFrom purrr map pluck
 #' @importFrom feasts autoplot autolayer
 #' @importFrom ggplot2 labs guides guide_legend
@@ -102,11 +116,11 @@ plot_decomposition <- function (data_xx, colours_chr = c("gray", "#D55E00"), fre
 plot_forecast <- function (data_xx, ts_models_ls, metrics_chr = make_metric_vars(), 
     x_label_1L_chr = "") 
 {
-    data_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!ts_models_ls$args_ls)
+    data_tsb <- transform_to_mdl_input(data_xx, ts_models_ls = ts_models_ls)
     index_1L_chr <- tsibble::index(data_tsb) %>% as.character()
     dates_chr <- data_tsb %>% dplyr::pull(!!rlang::sym(index_1L_chr)) %>% 
         as.character()
-    intersect(names(ts_models_ls$fabels_ls), metrics_chr) %>% 
+    plot_ls <- intersect(names(ts_models_ls$fabels_ls), metrics_chr) %>% 
         purrr::map(~{
             measure_1L_chr <- .x
             training_tsb <- make_training_ds(data_tsb, index_1L_chr = index_1L_chr, 
@@ -128,35 +142,70 @@ plot_forecast <- function (data_xx, ts_models_ls, metrics_chr = make_metric_vars
                     " ", .x)) + ggplot2::guides(colour = ggplot2::guide_legend(title = "Forecast"))
             }
         })
+    if (length(plot_ls) > 1) {
+        plot_xx <- plot_ls
+    }
+    else {
+        plot_xx <- plot_ls %>% purrr::pluck(1)
+    }
+    return(plot_xx)
 }
 #' Plot lags
-#' @description plot_lags() is a Plot function that plots data. Specifically, this function implements an algorithm to plot lags. The function is called for its side effects and does not return a value.
+#' @description plot_lags() is a Plot function that plots data. Specifically, this function implements an algorithm to plot lags. The function returns Plot (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
+#' @param arrow_1L_lgl Arrow (a logical vector of length one), Default: F
 #' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly")
 #' @param key_totals_ls Key totals (a list), Default: NULL
 #' @param key_vars_chr Key variables (a character vector), Default: character(0)
+#' @param lags_int Lags (an integer vector), Default: integer(0)
 #' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
+#' @param period_1L_chr Period (a character vector of length one), Default: NULL
 #' @param prefix_1L_chr Prefix (a character vector of length one), Default: 'Lagged '
-#' @return No return value, called for side effects.
+#' @param type_1L_chr Type (a character vector of length one), Default: c("path", "point")
+#' @param ... Additional arguments
+#' @return Plot (an output object of multiple potential types)
 #' @rdname plot_lags
 #' @export 
-#' @importFrom purrr map
+#' @importFrom purrr map pluck
+#' @importFrom rlang exec sym
 #' @importFrom feasts gg_lag
-#' @importFrom rlang sym
+#' @importFrom dplyr select
 #' @importFrom ggplot2 labs
 #' @keywords internal
-plot_lags <- function (data_xx, frequency_1L_chr = c("daily", "weekly", "monthly", 
-    "quarterly", "yearly"), key_totals_ls = NULL, key_vars_chr = character(0), 
-    metrics_chr = make_metric_vars(), prefix_1L_chr = "Lagged ") 
+plot_lags <- function (data_xx, arrow_1L_lgl = F, frequency_1L_chr = c("daily", 
+    "weekly", "monthly", "quarterly", "yearly"), key_totals_ls = NULL, 
+    key_vars_chr = character(0), lags_int = integer(0), metrics_chr = make_metric_vars(), 
+    period_1L_chr = NULL, prefix_1L_chr = "Lagged ", type_1L_chr = c("path", 
+        "point"), ...) 
 {
     frequency_1L_chr <- match.arg(frequency_1L_chr)
-    metrics_chr %>% purrr::map(~{
-        get_tsibble(data_xx, frequency_1L_chr = frequency_1L_chr, 
-            key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr, 
-            metrics_chr = metrics_chr) %>% feasts::gg_lag(!!rlang::sym(.x), 
-            geom = "point") + ggplot2::labs(x = paste0(prefix_1L_chr, 
-            .x))
+    type_1L_chr <- match.arg(type_1L_chr)
+    extras_ls <- list(...)
+    if (identical(lags_int, integer(0))) {
+        lags_int <- switch(frequency_1L_chr, daily = 1:7, weekly = 1:12, 
+            monthly = 1:24, quarterly = 1:8, yearly = 1:2)
+    }
+    legend_1L_chr <- switch(frequency_1L_chr, daily = "Day", 
+        weekly = "Week", monthly = "Month", quarterly = "Quarter", 
+        yearly = "Year")
+    data_tsb <- get_tsibble(data_xx, frequency_1L_chr = frequency_1L_chr, 
+        key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr, 
+        metrics_chr = metrics_chr)
+    plot_ls <- metrics_chr %>% purrr::map(~{
+        args_ls <- list(geom = type_1L_chr, lags = lags_int, 
+            arrow = arrow_1L_lgl, period = period_1L_chr) %>% 
+            append(extras_ls)
+        plt <- rlang::exec(feasts::gg_lag, data_tsb %>% dplyr::select(!!rlang::sym(.x)), 
+            !!!args_ls)
+        plt + ggplot2::labs(x = paste0(prefix_1L_chr, .x), color = legend_1L_chr)
     })
+    if (length(plot_ls) > 1) {
+        plot_xx <- plot_ls
+    }
+    else {
+        plot_xx <- plot_ls %>% purrr::pluck(1)
+    }
+    return(plot_xx)
 }
 #' Plot multiple
 #' @description plot_multiple() is a Plot function that plots data. Specifically, this function implements an algorithm to plot multiple. The function is called for its side effects and does not return a value.
@@ -244,8 +293,30 @@ plot_multiple <- function (tsibbles_xx, by_value_1L_lgl = F, caption_1L_chr = ""
         })
     }
 }
+#' Plot residuals
+#' @description plot_residuals() is a Plot function that plots data. Specifically, this function implements an algorithm to plot residuals. The function returns Residuals (a plot).
+#' @param ts_models_ls Time series models (a list), Default: make_ts_models_ls()
+#' @param var_1L_chr Variable (a character vector of length one)
+#' @param model_1L_chr Model (a character vector of length one), Default: 'ARIMA'
+#' @param type_1L_chr Type (a character vector of length one), Default: 'innovation'
+#' @param ... Additional arguments
+#' @return Residuals (a plot)
+#' @rdname plot_residuals
+#' @export 
+#' @importFrom dplyr select
+#' @importFrom rlang sym
+#' @importFrom feasts gg_tsresiduals
+#' @keywords internal
+plot_residuals <- function (ts_models_ls = make_ts_models_ls(), var_1L_chr, model_1L_chr = "ARIMA", 
+    type_1L_chr = "innovation", ...) 
+{
+    residuals_plt <- ts_models_ls$mabels_ls[[var_1L_chr]] %>% 
+        dplyr::select(!!rlang::sym(model_1L_chr)) %>% feasts::gg_tsresiduals(type = type_1L_chr, 
+        ...)
+    return(residuals_plt)
+}
 #' Plot scatter
-#' @description plot_scatter() is a Plot function that plots data. Specifically, this function implements an algorithm to plot scatter. The function is called for its side effects and does not return a value.
+#' @description plot_scatter() is a Plot function that plots data. Specifically, this function implements an algorithm to plot scatter. The function returns Plot (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
 #' @param axis_labels_1L_chr Axis labels (a character vector of length one), Default: c("none", "show", "inner")
 #' @param caption_1L_chr Caption (a character vector of length one), Default: ''
@@ -263,7 +334,7 @@ plot_multiple <- function (tsibbles_xx, by_value_1L_lgl = F, caption_1L_chr = ""
 #' @param sports_vars_chr Sports variables (a character vector), Default: get_sports_vars()
 #' @param type_1L_chr Type (a character vector of length one), Default: c("totals", "key", "wide")
 #' @param what_1L_chr What (a character vector of length one), Default: character(0)
-#' @return No return value, called for side effects.
+#' @return Plot (an output object of multiple potential types)
 #' @rdname plot_scatter
 #' @export 
 #' @importFrom tsibble index
@@ -317,7 +388,7 @@ plot_scatter <- function (data_xx, axis_labels_1L_chr = c("none", "show", "inner
                 metrics_chr)
             combinations_ls <- list(metrics_ls = list(metrics_chr))
         }
-        combinations_ls %>% purrr::map2(names(combinations_ls), 
+        plot_ls <- combinations_ls %>% purrr::map2(names(combinations_ls), 
             ~{
                 variables_chr <- .x
                 name_1L_chr <- .y
@@ -360,13 +431,20 @@ plot_scatter <- function (data_xx, axis_labels_1L_chr = c("none", "show", "inner
     else {
         combinations_mat <- combn(unique(make_metric_vars()), 
             2)
-        1:ncol(combinations_mat) %>% purrr::map(~{
+        plot_ls <- 1:ncol(combinations_mat) %>% purrr::map(~{
             variables_chr <- combinations_mat[, .x]
             data_tsb %>% ggplot2::ggplot(ggplot2::aes(x = !!rlang::sym(variables_chr[1]), 
                 y = !!rlang::sym(variables_chr[2]))) + ggplot2::geom_point() + 
                 ggplot2::labs(x = variables_chr[1], y = variables_chr[2])
         })
     }
+    plot_xx <- plot_ls
+    if (length(plot_ls) == 1) {
+        if (length(plot_ls[[1]]) == 1) {
+            plot_xx <- plot_ls[[1]][[1]]
+        }
+    }
+    return(plot_xx)
 }
 #' Plot series
 #' @description plot_series() is a Plot function that plots data. Specifically, this function implements an algorithm to plot series. The function is called for its side effects and does not return a value.
@@ -533,10 +611,11 @@ plot_sngl_series <- function (data_tsb, caption_1L_chr = "", grid_1L_lgl = FALSE
             temporal_1L_chr, " ", what_1L_chr, suffix_1L_chr))
 }
 #' Plot tsibble
-#' @description plot_tsibble() is a Plot function that plots data. Specifically, this function implements an algorithm to plot tsibble. The function returns Plot (a plot).
+#' @description plot_tsibble() is a Plot function that plots data. Specifically, this function implements an algorithm to plot tsibble. The function returns Plot (an output object of multiple potential types).
 #' @param series_tsb Series (a tsibble)
 #' @param auto_1L_lgl Automatic (a logical vector of length one), Default: TRUE
 #' @param date_tfmn_fn Date transformation (a function), Default: NULL
+#' @param facet_1L_lgl Facet (a logical vector of length one), Default: F
 #' @param fiscal_start_1L_int Fiscal start (an integer vector of length one), Default: 7
 #' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal", 
 #'    "sub")
@@ -547,13 +626,14 @@ plot_sngl_series <- function (data_tsb, caption_1L_chr = "", grid_1L_lgl = FALSE
 #' @param transform_1L_lgl Transform (a logical vector of length one), Default: TRUE
 #' @param type_1L_chr Type (a character vector of length one), Default: c("main", "cumulative")
 #' @param what_1L_chr What (a character vector of length one), Default: character(0)
-#' @return Plot (a plot)
+#' @return Plot (an output object of multiple potential types)
 #' @rdname plot_tsibble
 #' @export 
 #' @importFrom lubridate ym
-#' @importFrom purrr map
 #' @importFrom feasts autoplot
-#' @importFrom rlang sym
+#' @importFrom fabletools vars
+#' @importFrom rlang syms sym
+#' @importFrom purrr map pluck
 #' @importFrom tsibble index as_tibble
 #' @importFrom tidyr pivot_wider
 #' @importFrom dygraphs dygraph
@@ -561,11 +641,12 @@ plot_sngl_series <- function (data_tsb, caption_1L_chr = "", grid_1L_lgl = FALSE
 #' @importFrom dplyr pull
 #' @keywords internal
 plot_tsibble <- function (series_tsb, auto_1L_lgl = TRUE, date_tfmn_fn = NULL, 
-    fiscal_start_1L_int = 7L, frequency_1L_chr = c("daily", "weekly", 
-        "monthly", "quarterly", "yearly", "fiscal", "sub"), key_totals_ls = NULL, 
-    key_vars_chr = character(0), metrics_chr = make_metric_vars(), 
-    prefix_1L_chr = "Cumulative", transform_1L_lgl = TRUE, type_1L_chr = c("main", 
-        "cumulative"), what_1L_chr = character(0)) 
+    facet_1L_lgl = F, fiscal_start_1L_int = 7L, frequency_1L_chr = c("daily", 
+        "weekly", "monthly", "quarterly", "yearly", "fiscal", 
+        "sub"), key_totals_ls = NULL, key_vars_chr = character(0), 
+    metrics_chr = make_metric_vars(), prefix_1L_chr = "Cumulative", 
+    transform_1L_lgl = TRUE, type_1L_chr = c("main", "cumulative"), 
+    what_1L_chr = character(0)) 
 {
     frequency_1L_chr <- match.arg(frequency_1L_chr)
     type_1L_chr <- match.arg(type_1L_chr)
@@ -582,12 +663,24 @@ plot_tsibble <- function (series_tsb, auto_1L_lgl = TRUE, date_tfmn_fn = NULL,
     else {
         focused_tsb <- series_tsb
     }
+    if (type_1L_chr == "cumulative") {
+        metrics_chr <- paste0(prefix_1L_chr, metrics_chr)
+    }
     if (auto_1L_lgl) {
-        plt <- metrics_chr %>% purrr::map(~focused_tsb %>% feasts::autoplot(!!rlang::sym(.x)))
+        if (facet_1L_lgl) {
+            plt_xx <- focused_tsb %>% feasts::autoplot(fabletools::vars(!!!rlang::syms(metrics_chr)))
+        }
+        else {
+            plt_xx <- metrics_chr %>% purrr::map(~focused_tsb %>% 
+                feasts::autoplot(!!rlang::sym(.x)))
+            if (length(metrics_chr) == 1) {
+                plt_xx <- plt_xx %>% purrr::pluck(1)
+            }
+        }
     }
     else {
         if (length(metrics_chr) > 1) {
-            plt <- metrics_chr %>% purrr::map(~plot_tsibble(focused_tsb, 
+            plt_xx <- metrics_chr %>% purrr::map(~plot_tsibble(focused_tsb, 
                 auto_1L_lgl = FALSE, date_tfmn_fn = date_tfmn_fn, 
                 fiscal_start_1L_int = fiscal_start_1L_int, frequency_1L_chr = frequency_1L_chr, 
                 metrics_chr = .x, transform_1L_lgl = FALSE, what_1L_chr = what_1L_chr))
@@ -598,11 +691,11 @@ plot_tsibble <- function (series_tsb, auto_1L_lgl = TRUE, date_tfmn_fn = NULL,
             if (!identical(what_1L_chr, character(0))) 
                 ds_tb <- ds_tb %>% tidyr::pivot_wider(names_from = what_1L_chr, 
                   values_from = metrics_chr)
-            plt <- dygraphs::dygraph(xts::xts(x = ds_tb, order.by = date_tfmn_fn(ds_tb %>% 
+            plt_xx <- dygraphs::dygraph(xts::xts(x = ds_tb, order.by = date_tfmn_fn(ds_tb %>% 
                 dplyr::pull(!!rlang::sym(index_1L_chr)))))
         }
     }
-    return(plt)
+    return(plt_xx)
 }
 #' Plot weekdays
 #' @description plot_weekdays() is a Plot function that plots data. Specifically, this function implements an algorithm to plot weekdays. The function is called for its side effects and does not return a value.

@@ -4,7 +4,12 @@
 \alias{add_fabels}
 \title{Add fabels}
 \usage{
-add_fabels(ts_models_ls, data_xx = NULL, periods_1L_int = integer(0))
+add_fabels(
+  ts_models_ls,
+  data_xx = NULL,
+  periods_1L_int = integer(0),
+  type_1L_chr = c("empirical", "scenario")
+)
 }
 \arguments{
 \item{ts_models_ls}{Time series models (a list)}
@@ -12,6 +17,8 @@ add_fabels(ts_models_ls, data_xx = NULL, periods_1L_int = integer(0))
 \item{data_xx}{Data (an output object of multiple potential types), Default: NULL}
 
 \item{periods_1L_int}{Periods (an integer vector of length one), Default: integer(0)}
+
+\item{type_1L_chr}{Type (a character vector of length one), Default: c("empirical", "scenario")}
 }
 \value{
 Time series models (a list)

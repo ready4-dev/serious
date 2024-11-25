@@ -88,6 +88,40 @@ get_medicare_data <- function (path_1L_chr = character(0), clean_1L_lgl = FALSE,
     medicare_tb <- medicare_df %>% tibble::as_tibble()
     return(medicare_tb)
 }
+#' Get model predictors
+#' @description get_model_predrs() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get model predictors. The function returns Model predictors (a list).
+#' @param ts_models_ls Time series models (a list), Default: make_ts_models_ls()
+#' @return Model predictors (a list)
+#' @rdname get_model_predrs
+#' @export 
+#' @keywords internal
+get_model_predrs <- function (ts_models_ls = make_ts_models_ls()) 
+{
+    predictors_chr <- cumulatives_chr <- contributors_chr <- joins_chr <- character(0)
+    if (!identical(ts_models_ls$predictor_args_ls, make_tfmn_args_ls())) {
+        predictors_chr <- ts_models_ls$predictor_args_ls$metrics_chr
+    }
+    if (!identical(ts_models_ls$cumulatives_args_ls, make_tfmn_args_ls())) {
+        contributors_chr <- ts_models_ls$cumulatives_args_ls$metrics_chr
+        cumulatives_chr <- paste0(ts_models_ls$cumulatives_args_ls$prefix_1L_chr, 
+            ts_models_ls$cumulatives_args_ls$metrics_chr)
+    }
+    if (!identical(ts_models_ls$join_args_ls, make_tfmn_args_ls())) {
+        if (ts_models_ls$join_args_ls$type_1L_chr == "cumulative") {
+            join_contributors_chr <- ts_models_ls$join_args_ls$metrics_chr
+            joins_chr <- paste0(ts_models_ls$join_args_ls$prefix_1L_chr, 
+                ts_models_ls$join_args_ls$metrics_chr)
+        }
+        else {
+            join_contributors_chr <- character(0)
+            joins_chr <- ts_models_ls$join_args_ls$metrics_chr
+        }
+    }
+    model_predrs_ls <- list(predictors_chr = predictors_chr, 
+        contributors_chr = contributors_chr, cumulatives_chr = cumulatives_chr, 
+        join_contributors_chr = join_contributors_chr, joins_chr = joins_chr)
+    return(model_predrs_ls)
+}
 #' Get new index
 #' @description get_new_index() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get new index. The function returns New index (a character vector of length one).
 #' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal", 
@@ -111,30 +145,42 @@ get_new_index <- function (frequency_1L_chr = c("daily", "weekly", "monthly",
 #' @description get_performance() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get performance. The function returns Performance (a tibble).
 #' @param ts_mdls_ls Time series models (a list)
 #' @param data_xx Data (an output object of multiple potential types)
-#' @param metric_1L_chr Metric (a character vector of length one), Default: make_metric_vars()
+#' @param metric_1L_chr Metric (a character vector of length one)
 #' @param rank_by_int Rank by (an integer vector), Default: integer(0)
 #' @param statistics_chr Statistics (a character vector), Default: c("RMSE", "MAE", "MPE", "MAPE")
+#' @param type_1L_chr Type (a character vector of length one), Default: c("accuracy", "report")
 #' @return Performance (a tibble)
 #' @rdname get_performance
 #' @export 
 #' @importFrom purrr pluck
-#' @importFrom fabletools accuracy
+#' @importFrom fabletools accuracy report
 #' @importFrom dplyr select arrange
 #' @importFrom rlang sym
 #' @keywords internal
-get_performance <- function (ts_mdls_ls, data_xx, metric_1L_chr = make_metric_vars(), 
-    rank_by_int = integer(0), statistics_chr = c("RMSE", "MAE", 
-        "MPE", "MAPE")) 
+get_performance <- function (ts_mdls_ls, data_xx, metric_1L_chr, rank_by_int = integer(0), 
+    statistics_chr = c("RMSE", "MAE", "MPE", "MAPE"), type_1L_chr = c("accuracy", 
+        "report")) 
 {
-    metric_1L_chr <- match.arg(metric_1L_chr)
+    type_1L_chr <- match.arg(type_1L_chr)
     data_tsb <- get_tsibble(data_xx, frequency_1L_chr = ts_mdls_ls$args_ls$frequency_1L_chr, 
         key_totals_ls = ts_mdls_ls$args_ls$key_totals_ls, key_vars_chr = ts_mdls_ls$args_ls$key_vars_chr, 
-        type_1L_chr = ts_mdls_ls$args_ls$type_1L_chr, what_1L_chr = ts_mdls_ls$args_ls$what_1L_chr)
-    performance_tb <- ts_mdls_ls$fabels_ls %>% purrr::pluck(metric_1L_chr) %>% 
-        fabletools::accuracy(data_tsb)
+        metrics_chr = metric_1L_chr, type_1L_chr = ts_mdls_ls$args_ls$type_1L_chr, 
+        what_1L_chr = ts_mdls_ls$args_ls$what_1L_chr)
+    if (type_1L_chr == "accuracy") {
+        performance_tb <- ts_mdls_ls$fabels_ls %>% purrr::pluck(metric_1L_chr) %>% 
+            fabletools::accuracy(data_tsb)
+    }
+    else {
+        performance_tb <- ts_mdls_ls$mabels_ls %>% purrr::pluck(metric_1L_chr) %>% 
+            fabletools::report()
+        statistics_chr <- setdiff(names(performance_tb), c(".model", 
+            intersect(c(ts_mdls_ls$args_ls$what_1L_chr, ts_mdls_ls$args_ls$key_vars_chr), 
+                names(performance_tb))))
+    }
     if (!identical(statistics_chr, character(0))) {
         performance_tb <- performance_tb %>% dplyr::select(.model, 
-            statistics_chr)
+            intersect(c(ts_mdls_ls$args_ls$what_1L_chr, ts_mdls_ls$args_ls$key_vars_chr), 
+                names(performance_tb)), statistics_chr)
     }
     if (!identical(rank_by_int, integer(0))) {
         performance_tb <- performance_tb %>% dplyr::arrange(!!rlang::sym(statistics_chr[rank_by_int]))
@@ -236,7 +282,7 @@ get_temporal_fn <- function (period_1L_chr = make_temporal_vars(index_1L_chr = "
 #' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal")
 #' @param key_totals_ls Key totals (a list), Default: NULL
 #' @param key_vars_chr Key variables (a character vector), Default: character(0)
-#' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
+#' @param metrics_chr Metrics (a character vector), Default: character(0)
 #' @param prefix_1L_chr Prefix (a character vector of length one), Default: 'Cumulative'
 #' @param type_1L_chr Type (a character vector of length one), Default: c("totals", "key", "wide", "main", "cumulative")
 #' @param what_1L_chr What (a character vector of length one), Default: character(0)
@@ -251,12 +297,15 @@ get_temporal_fn <- function (period_1L_chr = make_temporal_vars(index_1L_chr = "
 #' @importFrom tidyselect all_of
 get_tsibble <- function (data_xx, fill_gaps_1L_lgl = FALSE, frequency_1L_chr = c("daily", 
     "weekly", "monthly", "quarterly", "yearly", "fiscal"), key_totals_ls = NULL, 
-    key_vars_chr = character(0), metrics_chr = make_metric_vars(), 
+    key_vars_chr = character(0), metrics_chr = character(0), 
     prefix_1L_chr = "Cumulative", type_1L_chr = c("totals", "key", 
         "wide", "main", "cumulative"), what_1L_chr = character(0)) 
 {
     frequency_1L_chr <- match.arg(frequency_1L_chr)
     type_1L_chr <- match.arg(type_1L_chr)
+    if (identical(metrics_chr, character(0))) {
+        metrics_chr <- make_metric_vars()
+    }
     if (!tsibble::is_tsibble(data_xx) & !inherits(data_xx, "Ready4useDyad")) {
         assertthat::assert_that(is.list(data_xx))
         data_xx <- purrr::pluck(data_xx, paste0(type_1L_chr, 
@@ -326,8 +375,8 @@ get_tsibble <- function (data_xx, fill_gaps_1L_lgl = FALSE, frequency_1L_chr = c
                     tidyselect::all_of(c(key_vars_chr, metrics_chr)))
             }
             data_tsb <- filtered_tb %>% transform_to_tsibble(index_1L_chr = new_index_1L_chr, 
-                metrics_chr = metrics_chr, temporal_vars_chr = character(0), 
-                key_vars_chr = key_vars_chr)
+                key_vars_chr = key_vars_chr, metrics_chr = metrics_chr, 
+                temporal_vars_chr = character(0))
             if (type_1L_chr == "cumulative") {
                 base_index_1L_chr <- tsibble::index(data_xx) %>% 
                   as.character()

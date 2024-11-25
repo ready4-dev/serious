@@ -20,9 +20,10 @@ calculate_autocorrelations <- function (data_xx, frequency_1L_chr = c("daily", "
     max_1L_int = NULL, metrics_chr = make_metric_vars()) 
 {
     frequency_1L_chr <- match.arg(frequency_1L_chr)
-    autocorrelations_ls <- metrics_chr %>% purrr::map(~get_tsibble(data_xx, 
-        frequency_1L_chr = frequency_1L_chr, key_totals_ls = key_totals_ls, 
-        key_vars_chr = key_vars_chr, metrics_chr = metrics_chr) %>% 
+    data_tsb <- get_tsibble(data_xx, frequency_1L_chr = frequency_1L_chr, 
+        key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr, 
+        metrics_chr = metrics_chr)
+    autocorrelations_ls <- metrics_chr %>% purrr::map(~data_tsb %>% 
         tsibble::fill_gaps() %>% feasts::ACF(!!rlang::sym(.x), 
         lag_max = max_1L_int)) %>% stats::setNames(metrics_chr)
     return(autocorrelations_ls)

@@ -6,91 +6,34 @@
 \usage{
 transform_to_tsibble(
   data_tb,
-  activity_1L_chr = "Activity",
-  athlete_roles_chr = c("Athlete", "AlumniAthlete"),
-  appointments_var_1L_chr = "Appointments",
-  cancellations_var_1L_chr = "Cancellations",
-  clinical_team_1L_chr = "Clinical Team",
-  clinician_1L_chr = "Clinician",
-  clinician_discipline_1L_chr = "Service",
-  components_chr = c("Year", "Quarter", "Week"),
-  cost_var_1L_chr = "Cost",
   date_tfmn_fn = identity,
-  days_1L_chr = "Weekday",
-  duration_1L_chr = "Duration",
-  exclude_chr = "Group",
-  fiscal_start_1L_int = 7L,
-  group_1L_chr = character(0),
+  focused_args_ls = NULL,
+  focused_fn = NULL,
   index_1L_chr = "Date",
-  is_wide_1L_lgl = F,
   key_vars_chr = character(0),
   metrics_chr = make_metric_vars(),
-  referrals_var_1L_chr = "Referrals",
-  referrers_1L_chr = "Referrer Role",
-  severity_1L_chr = "Severity",
-  team_disciplines_1L_chr = "Disciplines",
   temporal_vars_chr = make_temporal_vars(),
-  uid_var_1L_chr = "UID",
-  type_1L_chr = c("main", "focused"),
-  what_1L_chr = c("all", "totals")
+  type_1L_chr = c("main", "focused")
 )
 }
 \arguments{
 \item{data_tb}{Data (a tibble)}
 
-\item{activity_1L_chr}{Activity (a character vector of length one), Default: 'Activity'}
-
-\item{athlete_roles_chr}{Athlete roles (a character vector), Default: c("Athlete", "AlumniAthlete")}
-
-\item{appointments_var_1L_chr}{Appointments variable (a character vector of length one), Default: 'Appointments'}
-
-\item{cancellations_var_1L_chr}{Cancellations variable (a character vector of length one), Default: 'Cancellations'}
-
-\item{clinical_team_1L_chr}{Clinical team (a character vector of length one), Default: 'Clinical Team'}
-
-\item{clinician_1L_chr}{Clinician (a character vector of length one), Default: 'Clinician'}
-
-\item{clinician_discipline_1L_chr}{Clinician discipline (a character vector of length one), Default: 'Service'}
-
-\item{components_chr}{Components (a character vector), Default: c("Year", "Quarter", "Week")}
-
-\item{cost_var_1L_chr}{Cost variable (a character vector of length one), Default: 'Cost'}
-
 \item{date_tfmn_fn}{Date transformation (a function), Default: identity}
 
-\item{days_1L_chr}{Days (a character vector of length one), Default: 'Weekday'}
+\item{focused_args_ls}{Focused arguments (a list), Default: NULL}
 
-\item{duration_1L_chr}{Duration (a character vector of length one), Default: 'Duration'}
-
-\item{exclude_chr}{Exclude (a character vector), Default: 'Group'}
-
-\item{fiscal_start_1L_int}{Fiscal start (an integer vector of length one), Default: 7}
-
-\item{group_1L_chr}{Group (a character vector of length one), Default: character(0)}
+\item{focused_fn}{Focused (a function), Default: NULL}
 
 \item{index_1L_chr}{Index (a character vector of length one), Default: 'Date'}
-
-\item{is_wide_1L_lgl}{Is wide (a logical vector of length one), Default: F}
 
 \item{key_vars_chr}{Key variables (a character vector), Default: character(0)}
 
 \item{metrics_chr}{Metrics (a character vector), Default: make_metric_vars()}
 
-\item{referrals_var_1L_chr}{Referrals variable (a character vector of length one), Default: 'Referrals'}
-
-\item{referrers_1L_chr}{Referrers (a character vector of length one), Default: 'Referrer Role'}
-
-\item{severity_1L_chr}{Severity (a character vector of length one), Default: 'Severity'}
-
-\item{team_disciplines_1L_chr}{Team disciplines (a character vector of length one), Default: 'Disciplines'}
-
 \item{temporal_vars_chr}{Temporal variables (a character vector), Default: make_temporal_vars()}
 
-\item{uid_var_1L_chr}{Unique identifier variable (a character vector of length one), Default: 'UID'}
-
 \item{type_1L_chr}{Type (a character vector of length one), Default: c("main", "focused")}
-
-\item{what_1L_chr}{What (a character vector of length one), Default: c("all", "totals")}
 }
 \value{
 Data (a tsibble)

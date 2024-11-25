@@ -12,7 +12,7 @@ abbreviations_lup <- Y@b_Ready4useIngest@objects_ls$abbreviations_lup %>%
                                                               plural_lgl = c(F)) %>%
   dplyr::arrange(short_name_chr)
 treat_as_words_chr <- c(Y@b_Ready4useIngest@objects_ls$treat_as_words_chr,
-                        "autocorrelation", "autocorrelations", "cumulatives", "disengaged", "fabels",  "summarise", "tsibble", "tsibbles") %>%
+                        "mabels", "predictor") %>%
   sort()
 
 # abbreviations_lup <- Y@b_Ready4useIngest@objects_ls$abbreviations_lup %>%
@@ -64,7 +64,7 @@ treat_as_words_chr <- c(Y@b_Ready4useIngest@objects_ls$treat_as_words_chr,
 #   dplyr::arrange(short_name_chr)
 Y <- renewSlot(Y,
                new_val_xx = Ready4useIngest(objects_ls = list(
-                 abbreviations_lup = abbreviations_lup,
+                 # abbreviations_lup = abbreviations_lup,
                  # classes_bup_lup =  classes_bup_lup,
                  # classes_lup = classes_lup,
                  # object_type_lup = object_type_lup,

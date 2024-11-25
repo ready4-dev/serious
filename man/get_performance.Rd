@@ -7,9 +7,10 @@
 get_performance(
   ts_mdls_ls,
   data_xx,
-  metric_1L_chr = make_metric_vars(),
+  metric_1L_chr,
   rank_by_int = integer(0),
-  statistics_chr = c("RMSE", "MAE", "MPE", "MAPE")
+  statistics_chr = c("RMSE", "MAE", "MPE", "MAPE"),
+  type_1L_chr = c("accuracy", "report")
 )
 }
 \arguments{
@@ -17,11 +18,13 @@ get_performance(
 
 \item{data_xx}{Data (an output object of multiple potential types)}
 
-\item{metric_1L_chr}{Metric (a character vector of length one), Default: make_metric_vars()}
+\item{metric_1L_chr}{Metric (a character vector of length one)}
 
 \item{rank_by_int}{Rank by (an integer vector), Default: integer(0)}
 
 \item{statistics_chr}{Statistics (a character vector), Default: c("RMSE", "MAE", "MPE", "MAPE")}
+
+\item{type_1L_chr}{Type (a character vector of length one), Default: c("accuracy", "report")}
 }
 \value{
 Performance (a tibble)

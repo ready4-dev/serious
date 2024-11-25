@@ -8,6 +8,7 @@ plot_tsibble(
   series_tsb,
   auto_1L_lgl = TRUE,
   date_tfmn_fn = NULL,
+  facet_1L_lgl = F,
   fiscal_start_1L_int = 7L,
   frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal",
     "sub"),
@@ -26,6 +27,8 @@ plot_tsibble(
 \item{auto_1L_lgl}{Automatic (a logical vector of length one), Default: TRUE}
 
 \item{date_tfmn_fn}{Date transformation (a function), Default: NULL}
+
+\item{facet_1L_lgl}{Facet (a logical vector of length one), Default: F}
 
 \item{fiscal_start_1L_int}{Fiscal start (an integer vector of length one), Default: 7}
 
@@ -47,9 +50,9 @@ plot_tsibble(
 \item{what_1L_chr}{What (a character vector of length one), Default: character(0)}
 }
 \value{
-Plot (a plot)
+Plot (an output object of multiple potential types)
 }
 \description{
-plot_tsibble() is a Plot function that plots data. Specifically, this function implements an algorithm to plot tsibble. The function returns Plot (a plot).
+plot_tsibble() is a Plot function that plots data. Specifically, this function implements an algorithm to plot tsibble. The function returns Plot (an output object of multiple potential types).
 }
 \keyword{internal}

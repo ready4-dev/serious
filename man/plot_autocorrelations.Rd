@@ -21,9 +21,9 @@ plot_autocorrelations(
 \item{metrics_chr}{Metrics (a character vector), Default: make_metric_vars()}
 }
 \value{
-No return value, called for side effects.
+Plot (an output object of multiple potential types)
 }
 \description{
-plot_autocorrelations() is a Plot function that plots data. Specifically, this function implements an algorithm to plot autocorrelations. The function is called for its side effects and does not return a value.
+plot_autocorrelations() is a Plot function that plots data. Specifically, this function implements an algorithm to plot autocorrelations. The function returns Plot (an output object of multiple potential types).
 }
 \keyword{internal}

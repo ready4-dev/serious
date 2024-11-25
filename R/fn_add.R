@@ -348,15 +348,20 @@ add_episodes <- function (data_xx, separation_after_dbl, index_1L_int = integer(
 #' @param ts_models_ls Time series models (a list)
 #' @param data_xx Data (an output object of multiple potential types), Default: NULL
 #' @param periods_1L_int Periods (an integer vector of length one), Default: integer(0)
+#' @param type_1L_chr Type (a character vector of length one), Default: c("empirical", "scenario")
 #' @return Time series models (a list)
 #' @rdname add_fabels
 #' @export 
+#' @importFrom dplyr pull filter
+#' @importFrom rlang sym
 #' @importFrom purrr map2
 #' @importFrom fabletools forecast
 #' @importFrom stats setNames
 #' @keywords internal
-add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0)) 
+add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0), 
+    type_1L_chr = c("empirical", "scenario")) 
 {
+    type_1L_chr <- match.arg(type_1L_chr)
     if (identical(periods_1L_int, integer(0))) {
         periods_1L_int <- ts_models_ls$test_1L_int
     }
@@ -364,21 +369,26 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
         stop("Supply a positive integer value to periods_1L_int")
     }
     if (!is.null(data_xx)) {
-        new_data_tsb <- get_tsibble(data_xx, frequency_1L_chr = ts_models_ls$args_ls$frequency_1L_chr, 
-            key_totals_ls = ts_models_ls$args_ls$key_totals_ls, 
-            key_vars_chr = ts_models_ls$args_ls$key_vars_chr, 
-            type_1L_chr = ts_models_ls$args_ls$type_1L_chr, what_1L_chr = ts_models_ls$args_ls$what_1L_chr)
-        if (!identical(ts_models_ls$test_1L_int, integer(0))) {
-            new_data_tsb <- new_data_tsb %>% tail(ts_models_ls$test_1L_int)
+        if (type_1L_chr == "empirical") {
+            new_data_tsb <- transform_to_mdl_input(data_xx, ts_models_ls = ts_models_ls)
+            if (!identical(ts_models_ls$test_1L_int, integer(0))) {
+                index_1L_chr <- get_new_index(ts_models_ls$args_ls$frequency_1L_chr)
+                test_dtm <- new_data_tsb %>% dplyr::pull(!!rlang::sym(index_1L_chr)) %>% 
+                  unique() %>% sort() %>% tail(ts_models_ls$test_1L_int)
+                new_data_tsb <- new_data_tsb %>% dplyr::filter(!!rlang::sym(index_1L_chr) %in% 
+                  test_dtm)
+            }
+        }
+        else {
+            new_data_tsb <- data_xx
         }
     }
     else {
         new_data_tsb <- NULL
     }
-    fabels_ls <- ts_models_ls$mabels_ls %>% purrr::map2(names(ts_models_ls$mabels_ls), 
+    ts_models_ls$fabels_ls <- ts_models_ls$mabels_ls %>% purrr::map2(names(ts_models_ls$mabels_ls), 
         ~.x %>% fabletools::forecast(h = periods_1L_int, new_data = new_data_tsb)) %>% 
         stats::setNames(names(ts_models_ls$mabels_ls))
-    ts_models_ls <- append(ts_models_ls, list(fabels_ls = fabels_ls))
     return(ts_models_ls)
 }
 #' Add new unique identifier

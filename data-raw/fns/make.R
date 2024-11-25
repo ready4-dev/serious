@@ -228,86 +228,131 @@ make_new_correspondences <- function(data_tb = NULL,
                                                  new_nms_chr = unname(abbreviations_chr))
   return(x_ready4show_correspondences)
 }
-make_retainers <- function(retainers_tb,
-                           as_tsibble_1L_lgl = FALSE,
-                           censor_1L_lgl = TRUE,
-                           cumulatives_1L_lgl = FALSE,
-                           cost_var_1L_chr = "Retainer amount",
-                           data_tb = NULL,
-                           date_var_1L_chr = "Retainer date",
-                           default_1L_dbl = numeric(0),
-                           dyad_1L_lgl = FALSE,
-                           end_date_dtm = NULL,
-                           fill_gaps_1L_lgl = FALSE,
-                           fiscal_start_1L_int = 7L,
-                           offset_1L_int = -1,
-                           provider_id_1L_chr = "ProviderID",
-                           reset_new_1L_lgl = TRUE,
-                           unit_1L_chr = "days"){
-  retainers_tsb <- update_retainers_ds(retainers_tb,
-                                       cost_var_1L_chr = cost_var_1L_chr,
-                                       date_var_1L_chr = date_var_1L_chr,
-                                       end_date_dtm = end_date_dtm) %>%
-    transform_to_tsibble(index_1L_chr = "Date", metrics_chr = c("Clinicians","Retainer")) %>%
-    dplyr::select(Date, Clinicians, Retainer)
-  if(cumulatives_1L_lgl){
-    retainers_tsb <- retainers_tsb %>% dplyr::mutate(CumulativeRetainer = cumsum(`Retainer`),
-                                                     CumulativeClinicians = cumsum(Clinicians))
+make_retainers <- function (retainers_tb,
+                            as_tsibble_1L_lgl = FALSE,
+                            censor_1L_lgl = FALSE,
+                            cumulatives_1L_lgl = FALSE,
+                            cost_var_1L_chr = "Retainer amount",
+                            data_tb = NULL,
+                            date_var_1L_chr = "Retainer date",
+                            default_1L_dbl = numeric(0),
+                            dyad_1L_lgl = FALSE,
+                            end_date_dtm = NULL,
+                            fill_gaps_1L_lgl = FALSE,
+                            fiscal_start_1L_int = 7L,
+                            index_1L_chr = "Date",
+                            offset_1L_int = integer(0),
+                            provider_id_1L_chr = "ProviderID",
+                            reset_new_1L_lgl = TRUE,
+                            start_date_dtm = NULL,
+                            unit_1L_chr = "days")
+{
+  if (is.null(end_date_dtm)) {
+    end_date_dtm <- max(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr)))
   }
-  if(fill_gaps_1L_lgl){
-    retainers_tsb <- retainers_tsb  %>%
-      tsibble::fill_gaps(Clinicians = 0, Retainer = 0)
-    if(cumulatives_1L_lgl){
-      retainers_tsb <- retainers_tsb %>% tidyr::fill(CumulativeRetainer, CumulativeClinicians)
+  if(is.null(start_date_dtm)){
+    start_date_dtm <- min(min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))),
+                          ifelse(!is.null(data_tb),min(data_tb %>% dplyr::pull(!!rlang::sym(index_1L_chr))) %>% as.POSIXct(),Inf))
+  }
+  if (!is.null(start_date_dtm)) {
+    retainers_tb <- retainers_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) >= start_date_dtm)
+    if(!is.null(data_tb)){
+      data_tb <- data_tb %>% dplyr::filter(!!rlang::sym(index_1L_chr) >= start_date_dtm)
     }
   }
-  retainers_tsb <- add_temporal_vars(retainers_tsb, date_var_1L_chr = "Date", fiscal_start_1L_int = fiscal_start_1L_int)
-  if(!is.null(data_tb)){
-    preexisting_chr <- setdiff(data_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>% unique(), retainers_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>% unique()) %>% purrr::discard(is.na)
-    if(!identical(preexisting_chr, character(0))){
-      if(identical(default_1L_dbl, numeric(0))){
-        default_1L_dbl <- mean(retainers_tb %>% dplyr::pull(!!rlang::sym(cost_var_1L_chr)), na.rm=TRUE)
+  retainers_tsb <- update_retainers_ds(retainers_tb, cost_var_1L_chr = cost_var_1L_chr,
+                                       date_var_1L_chr = date_var_1L_chr, end_date_dtm = end_date_dtm) %>%
+    transform_to_tsibble(index_1L_chr = index_1L_chr, metrics_chr = c("Clinicians",
+                                                                      "Retainer")) %>% dplyr::select(!!rlang::sym(index_1L_chr), Clinicians,
+                                                                                                     Retainer)
+  if(start_date_dtm < min(retainers_tsb %>% dplyr::pull(!!rlang::sym(index_1L_chr)))){
+    lubridate::interval(start_date_dtm, min(retainers_tsb %>% dplyr::pull(!!rlang::sym(index_1L_chr)))) %>%
+      lubridate::as.duration()
+    steps_1L_int <- lubridate::interval(start_date_dtm, min(retainers_tsb %>% dplyr::pull(!!rlang::sym(index_1L_chr)))) %>%
+      lubridate::as.duration() %>% lubridate::duration() %>% as.numeric(unit_1L_chr)
+    retainers_tsb <- tsibble::append_row(retainers_tsb,
+                                         n=-steps_1L_int) %>%
+      dplyr::mutate(dplyr::across(c("Clinicians", "Retainer"), ~ dplyr::case_when(is.na(.x) ~ 0,
+                                                                                  T ~ .x)))
+  }
+  if (fill_gaps_1L_lgl) {
+    retainers_tsb <- retainers_tsb %>% tsibble::fill_gaps(Clinicians = 0,
+                                                          Retainer = 0)
+  }
+  retainers_tsb <- add_temporal_vars(retainers_tsb, date_var_1L_chr = index_1L_chr,
+                                     fiscal_start_1L_int = fiscal_start_1L_int)
+  if (!is.null(data_tb)) {
+    preexisting_chr <- setdiff(data_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>%
+                                 unique(), retainers_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>%
+                                 unique()) %>% purrr::discard(is.na)
+    if (!identical(preexisting_chr, character(0))) {
+      if (identical(default_1L_dbl, numeric(0))) {
+        default_1L_dbl <- mean(retainers_tb %>% dplyr::pull(!!rlang::sym(cost_var_1L_chr)),
+                               na.rm = TRUE)
       }
-      due_date_dtm <- min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) + lubridate::duration(offset_1L_int, units = unit_1L_chr)
-      if(is.null(end_date_dtm)){
-        end_date_dtm <- max(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr)))
+      if (!is.null(start_date_dtm) & identical(offset_1L_int, integer(0))) {
+        due_date_dtm <- start_date_dtm
+      }else{
+        due_date_dtm <- min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) +
+          lubridate::duration(offset_1L_int, units = unit_1L_chr)
       }
       preexisting_tb <- retainers_tb %>% dplyr::filter(F) %>%
-        dplyr::bind_rows(tibble::tibble(!!rlang::sym(date_var_1L_chr) :=  due_date_dtm,
-                                        !!rlang::sym(provider_id_1L_chr) := preexisting_chr,
-                                        !!rlang::sym(cost_var_1L_chr) :=  default_1L_dbl))
-      preexisting_tsb <- preexisting_tb %>% make_retainers(as_tsibble_1L_lgl = T, cumulatives_1L_lgl = cumulatives_1L_lgl, cost_var_1L_chr = cost_var_1L_chr, data_tb = NULL,
-                                                           date_var_1L_chr = date_var_1L_chr, dyad_1L_lgl = FALSE, end_date_dtm = end_date_dtm, fill_gaps_1L_lgl = fill_gaps_1L_lgl, fiscal_start_1L_int = fiscal_start_1L_int)
-      if(reset_new_1L_lgl){
-        preexisting_tsb <- preexisting_tsb %>% dplyr::mutate(Clinicians = 0)
-      }
+        dplyr::bind_rows(tibble::tibble(`:=`(!!rlang::sym(date_var_1L_chr),
+                                             due_date_dtm), `:=`(!!rlang::sym(provider_id_1L_chr),
+                                                                 preexisting_chr), `:=`(!!rlang::sym(cost_var_1L_chr),
+                                                                                        default_1L_dbl)))
+      preexisting_tsb <- preexisting_tb %>% make_retainers(as_tsibble_1L_lgl = T,
+                                                           cumulatives_1L_lgl = F, ##
+                                                           censor_1L_lgl = T,
+                                                           cost_var_1L_chr = cost_var_1L_chr,
+                                                           data_tb = NULL, date_var_1L_chr = date_var_1L_chr,
+                                                           dyad_1L_lgl = FALSE, end_date_dtm = end_date_dtm,
+                                                           fill_gaps_1L_lgl = fill_gaps_1L_lgl, fiscal_start_1L_int = fiscal_start_1L_int)
       retainers_tsb <- retainers_tsb %>% tsibble::as_tibble() %>%
         dplyr::bind_rows(preexisting_tsb %>% tsibble::as_tibble()) %>%
-        dplyr::arrange(Date) %>%
-        dplyr::group_by(Date) %>%
-        dplyr::summarise(dplyr::across(setdiff(names(retainers_tsb), c("Date",make_temporal_vars())), sum),
-                         dplyr::across(intersect(names(retainers_tsb), make_temporal_vars()), dplyr::first)
-        ) %>%
-        tsibble::as_tsibble(index = Date)
-      if(censor_1L_lgl)
-        retainers_tsb <- retainers_tsb %>%
-        dplyr::filter(Date>= min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))))
+        dplyr::arrange(!!rlang::sym(index_1L_chr)) %>% dplyr::group_by(!!rlang::sym(index_1L_chr)) %>%
+        dplyr::summarise(dplyr::across(setdiff(names(retainers_tsb),
+                                               c(index_1L_chr, make_temporal_vars())), sum),
+                         dplyr::across(intersect(names(retainers_tsb),
+                                                 make_temporal_vars()), dplyr::first)) %>% tsibble::as_tsibble(index = !!rlang::sym(index_1L_chr))
+
+
     }
   }
-  if(!as_tsibble_1L_lgl){
-    data_xx <- retainers_tsb %>% tsibble::as_tibble()
-  }else{
-    data_xx <- retainers_tsb
+  if (cumulatives_1L_lgl) {
+    retainers_tsb <- retainers_tsb %>% dplyr::mutate(CumulativeRetainer = cumsum(Retainer),
+                                                     CumulativeClinicians = cumsum(Clinicians))
+    retainers_tsb <- retainers_tsb %>%
+      dplyr::select(!!rlang::sym(index_1L_chr), Clinicians, Retainer, CumulativeClinicians, CumulativeRetainer, dplyr::everything())
   }
-  if(dyad_1L_lgl){
-    data_xx <- Ready4useDyad(ds_tb = data_xx) %>%
-      ready4use::add_dictionary(var_ctg_chr = "Temporal")
-    #c("Temporal",rep("Metrics",ncol(data_xx)-1))
-    data_xx@dictionary_r3 <- data_xx@dictionary_r3 %>%
-      dplyr::mutate(var_ctg_chr = dplyr::case_when(var_nm_chr %in% c("Clinicians", "Retainer", "CumulativeRetainer", "CumulativeClinicians") ~ "Metrics",
-                                                   TRUE ~ var_ctg_chr))
+  if (!is.null(data_tb)) {
+    if (!identical(preexisting_chr, character(0))) {
+      if (reset_new_1L_lgl) {
+        retainers_tsb <-  retainers_tsb %>% dplyr::left_join(preexisting_tsb %>%
+                                                               dplyr::select(Clinicians) %>%
+                                                               dplyr::rename(SubtractThisPlease = Clinicians)) %>%
+          dplyr::mutate(Clinicians = dplyr::case_when(!is.na(SubtractThisPlease) ~ Clinicians - SubtractThisPlease,
+                                                      TRUE ~ Clinicians)) %>%
+          dplyr::select(-SubtractThisPlease)
+      }
+      if (censor_1L_lgl)
+        retainers_tsb <- retainers_tsb %>% dplyr::filter(!!rlang::sym(index_1L_chr) >=
+                                                           min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))))
+    }
   }
 
+  if (!as_tsibble_1L_lgl) {
+    data_xx <- retainers_tsb %>% tsibble::as_tibble()
+  }
+  else {
+    data_xx <- retainers_tsb
+  }
+  if (dyad_1L_lgl) {
+    data_xx <- ready4use::Ready4useDyad(ds_tb = data_xx) %>% ready4use::add_dictionary(var_ctg_chr = "Temporal")
+    data_xx@dictionary_r3 <- data_xx@dictionary_r3 %>% dplyr::mutate(var_ctg_chr = dplyr::case_when(var_nm_chr %in%
+                                                                                                      c("Clinicians", "Retainer", "CumulativeRetainer",
+                                                                                                        "CumulativeClinicians") ~ "Metrics", TRUE ~ var_ctg_chr))
+  }
   return(data_xx)
 }
 make_roll_backs_ls <- function(data_xx,
@@ -664,6 +709,22 @@ make_temporal_vars <- function(what_1L_chr = c("all", "core", "fiscal","days", "
   temporal_vars_chr <- c(index_1L_chr, components_chr, fiscal_chr, days_1L_chr)
   return(temporal_vars_chr)
 }
+make_tfmn_args_ls <- function(fill_gaps_1L_lgl = logical(0),
+                              frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly",
+                                                   "yearly"),
+                              join_to_xx = NULL, key_totals_ls = NULL,
+                              key_vars_chr = character(0),
+                              metrics_chr = character(0),
+                              type_1L_chr = c("totals", "key", "wide", "main", "cumulative"),
+                              what_1L_chr = character(0)){
+  frequency_1L_chr <- match.arg(frequency_1L_chr)
+  type_1L_chr <- match.arg(type_1L_chr)
+  tfmn_args_ls <- list(fill_gaps_1L_lgl = fill_gaps_1L_lgl, frequency_1L_chr = frequency_1L_chr,
+                       join_to_xx = join_to_xx, key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr,
+                       metrics_chr = metrics_chr, type_1L_chr = type_1L_chr,
+                       what_1L_chr = what_1L_chr)
+  return(tfmn_args_ls)
+}
 make_training_ds <- function(data_tsb,
                              index_1L_chr = "Date",
                              test_1L_int = integer(0)){
@@ -676,82 +737,131 @@ make_training_ds <- function(data_tsb,
   }
   return(training_tsb)
 }
-make_ts_models <- function(data_xx,
-                           approximation_xx = NULL,
-                           fill_gaps_1L_lgl = FALSE,
-                           frequency_1L_chr = c("daily","weekly",
-                                                "monthly", "quarterly", "yearly"),
-                           index_1L_chr = character(0),
-                           key_vars_chr = character(0),
-                           key_totals_ls = NULL,
-                           #lag_1L_chr = "year",
-                           metrics_chr = make_metric_vars(),
-                           models_chr = c("Mean","Naïve","Seasonal naïve", "Drift", "Trend", "LMTS", "ETS", "ARIMA",# "ANN"
-                                          "NNTEAR", "Prophet", "Reg_ARIMA", "Reg_TSLM"
-                           ),
-                           model_type_1L_chr = "multiplicative",
-                           order_1L_int = 2,
-                           period_1L_int = 12,
-                           stepwise_1L_lgl = TRUE,
-                           terms_1L_chr = character(0),
-                           test_1L_int = integer(0),
-                           type_1L_chr = c("totals","key"),
-                           what_1L_chr = character(0)){
+make_ts_models <- function (data_xx, approximation_xx = NULL, collapse_1L_lgl = T,
+                            cumulatives_chr = character(0), fill_gaps_1L_lgl = FALSE,
+                            frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly",
+                                                 "yearly"), index_1L_chr = character(0), join_to_args_ls = make_tfmn_args_ls(), key_vars_chr = character(0),
+                            key_totals_ls = NULL, metrics_chr = make_metric_vars(), models_chr = c("Mean",
+                                                                                                   "Naïve", "Seasonal naïve", "Drift", "Trend", "LMTS",
+                                                                                                   "ETS", "ARIMA", "NNTEAR", "Prophet", "Reg_ARIMA", "Reg_Prophet","Reg_TSLM"),
+                            model_type_1L_chr = "multiplicative", order_1L_int = 2, period_1L_int = 12, predictors_chr = character(0), prefix_1L_chr = "Cumulative",
+                            stepwise_1L_lgl = TRUE, terms_1L_chr = character(0), terms_ls = NULL, test_1L_int = integer(0),
+                            type_1L_chr = c("totals", "key"), what_1L_chr = character(0)) {
   frequency_1L_chr <- match.arg(frequency_1L_chr)
   type_1L_chr <- match.arg(type_1L_chr)
-  args_ls <- list(fill_gaps_1L_lgl = fill_gaps_1L_lgl,  frequency_1L_chr = frequency_1L_chr,
-                  key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr,
-                  metrics_chr = metrics_chr,
-                  type_1L_chr = type_1L_chr,what_1L_chr = what_1L_chr)
-  data_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!args_ls)
-  if(identical(index_1L_chr, character(0))){
-    index_1L_chr <- get_new_index(frequency_1L_chr)
-  }
-  training_tsb <- make_training_ds(data_tsb,
-                                   index_1L_chr = index_1L_chr,
-                                   test_1L_int = test_1L_int)
-  if(identical(terms_1L_chr, character(0))){
-    models_chr <- setdiff(models_chr, c("Reg_TSLM", "Reg_ARIMA"))
-  }
-  mabels_ls <- metrics_chr %>% purrr::map(~{
-    mdl_1L_chr <- paste0(.x, " ~ ",terms_1L_chr) # Not evaluated prior to environment transfer
-    model_args_ls <- list()
-    model_args_ls <- list(Mean = fable::MEAN(!!rlang::sym(.x)),
-                          `Naïve` = fable::NAIVE(!!rlang::sym(.x)),
-                          `Seasonal naïve` = fable::SNAIVE(!!rlang::sym(.x) #~ lag(lag_1L_chr)
-                          ),
-                          Drift = fable::NAIVE(!!rlang::sym(.x) ~ drift()),
-                          Trend = fable::TSLM(!!rlang::sym(.x) ~ trend()),
-                          LMTS = fable::TSLM(!!rlang::sym(.x) ~ trend() + season()),
-                          ETS = fable::ETS(!!rlang::sym(.x)),
-                          ARIMA = fable::ARIMA(!!rlang::sym(.x), approximation = approximation_xx, stepwise = stepwise_1L_lgl), #ANN = fable::ETS(!!rlang::sym(.x) ~ error("A") + trend("N") + season("N"))
-                          NNTEAR = fable::NNETAR(!!rlang::sym(.x)),
-                          Prophet = eval(parse(text = paste0("fable.prophet::prophet(",
-                                                             .x,
-                                                             "~season(period=",
-                                                             period_1L_int,
-                                                             ", type='",
-                                                             model_type_1L_chr,
-                                                             "', order=",
-                                                             order_1L_int,
-                                                             "))")))
-    )
-    if(!identical(terms_1L_chr, character(0))){
-      model_args_ls <- append(model_args_ls,
-                              list(Reg_ARIMA = eval(parse(text = paste0("fable::ARIMA(",
-                                                                        mdl_1L_chr,
-                                                                        ", approximation = approximation_xx, stepwise = stepwise_1L_lgl)"))),
-                                   Reg_TSLM = eval(parse(text = paste0("fable::TSLM(",mdl_1L_chr,")")))))
+  if(is.null(terms_ls)){
+    args_ls <- list(fill_gaps_1L_lgl = fill_gaps_1L_lgl, frequency_1L_chr = frequency_1L_chr,
+                    key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr,
+                    metrics_chr = metrics_chr, type_1L_chr = type_1L_chr,
+                    what_1L_chr = what_1L_chr)
+    predictor_args_ls <- cumulatives_args_ls <- make_tfmn_args_ls()
+    if(!identical(predictors_chr, character(0))){
+      predictor_args_ls <- args_ls
+      predictor_args_ls$metrics_chr <- predictors_chr
     }
-    model_args_ls <- model_args_ls  %>%
-      purrr::keep_at(models_chr)
-    rlang::exec(fabletools::model, .data = training_tsb, !!!model_args_ls)
-  }) %>%
-    stats::setNames(metrics_chr)
-  ts_models_ls <-  list(mabels_ls = mabels_ls,
-                        args_ls = args_ls,
-                        models_chr = models_chr,
-                        test_1L_int = test_1L_int)
-  return(ts_models_ls)
+    if(!identical(cumulatives_chr, character(0))){
+      cumulatives_args_ls <- args_ls
+      cumulatives_args_ls$type_1L_chr <- "cumulative"
+      cumulatives_args_ls$metrics_chr <- cumulatives_chr
+      cumulatives_args_ls$prefix_1L_chr <- "Cumulative"
+    }
+    if(!identical(join_to_args_ls, make_tfmn_args_ls())){
+      join_to_args_ls$frequency_1L_chr <- frequency_1L_chr
+      if(identical(join_to_args_ls$fill_gaps_1L_lgl, logical(0))){
+        join_to_args_ls$fill_gaps_1L_lgl <- fill_gaps_1L_lgl
+      }
+      if(identical(join_to_args_ls$metrics_chr, character(0))){
+        join_to_args_ls$metrics_chr <- setdiff(names(join_to_args_ls$join_to_xx, get_new_index(frequency_1L_chr)))
+      }
+    }
+    # data_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!args_ls)
+    # if(!is.null(predictor_args_ls)){
+    #   predictors_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!predictor_args_ls)
+    #   data_tsb <- dplyr::left_join(data_tsb, predictors_tsb)
+    # }
+    # if(!is.null(cumulatives_args_ls)){
+    #   cumulatives_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!cumulatives_args_ls)
+    #   data_tsb <- dplyr::left_join(data_tsb, cumulatives_tsb)
+    # }
+    if (identical(terms_1L_chr, character(0))) {
+      models_chr <- setdiff(models_chr, c("Reg_TSLM", "Reg_Prophet", "Reg_ARIMA"))
+    }
+    ts_models_ls <- make_ts_models_ls(mabels_ls = list(), args_ls = args_ls, cumulatives_args_ls = cumulatives_args_ls, join_to_args_ls = join_to_args_ls,
+                                      predictor_args_ls = predictor_args_ls, models_chr = models_chr, test_1L_int = test_1L_int)
+    data_tsb <- transform_to_mdl_input(data_xx, ts_models_ls = ts_models_ls)
+    if (identical(index_1L_chr, character(0))) {
+      index_1L_chr <- get_new_index(frequency_1L_chr)
+    }
+    training_tsb <- make_training_ds(data_tsb, index_1L_chr = index_1L_chr,
+                                     test_1L_int = test_1L_int)
 
+    mabels_ls <- metrics_chr %>% purrr::map(~{
+      mdl_1L_chr <- paste0(.x, " ~ ", terms_1L_chr)
+      model_args_ls <- list()
+      model_args_ls <- list(Mean = fable::MEAN(!!rlang::sym(.x)),
+                            Naïve = fable::NAIVE(!!rlang::sym(.x)), `Seasonal naïve` = fable::SNAIVE(!!rlang::sym(.x)),
+                            Drift = fable::NAIVE(!!rlang::sym(.x) ~ drift()),
+                            Trend = fable::TSLM(!!rlang::sym(.x) ~ trend()),
+                            LMTS = fable::TSLM(!!rlang::sym(.x) ~ trend() + season()),
+                            ETS = fable::ETS(!!rlang::sym(.x)), ARIMA = fable::ARIMA(!!rlang::sym(.x),
+                                                                                     approximation = approximation_xx, stepwise = stepwise_1L_lgl),
+                            NNTEAR = fable::NNETAR(!!rlang::sym(.x)),
+                            Prophet = eval(parse(text = paste0("fable.prophet::prophet(",
+                                                               .x, "~season(period=", period_1L_int, ", type='",
+                                                               model_type_1L_chr, "', order=", order_1L_int,
+                                                               "))"))))
+      if (!identical(terms_1L_chr, character(0))) {
+        model_args_ls <- append(model_args_ls, list(Reg_ARIMA = eval(parse(text = paste0("fable::ARIMA(",
+                                                                                         mdl_1L_chr, ", approximation = approximation_xx, stepwise = stepwise_1L_lgl)"))),
+                                                    Reg_TSLM = eval(parse(text = paste0("fable::TSLM(",
+                                                                                        mdl_1L_chr, ")"))),
+                                                    Reg_Prophet = eval(parse(text = paste0("fable.prophet::prophet(",
+                                                                                           mdl_1L_chr, " + season(period=", period_1L_int, ", type='",
+                                                                                           model_type_1L_chr, "', order=", order_1L_int,
+                                                                                           "))")))))
+      }
+      model_args_ls <- model_args_ls %>% purrr::keep_at(models_chr)
+      rlang::exec(fabletools::model, .data = training_tsb,
+                  !!!model_args_ls)
+    }) %>% stats::setNames(metrics_chr)
+    ts_models_ls$mabels_ls <- mabels_ls
+    ts_models_xx <- ts_models_ls
+  }else{
+    ts_models_xx <- terms_ls %>% purrr::map(~make_ts_models(data_xx, approximation_xx = approximation_xx, cumulatives_chr = cumulatives_chr, fill_gaps_1L_lgl = fill_gaps_1L_lgl,
+                                                            frequency_1L_chr = frequency_1L_chr, index_1L_chr = index_1L_chr, join_to_args_ls = join_to_args_ls, key_vars_chr = key_vars_chr,
+                                                            key_totals_ls = key_totals_ls, metrics_chr = metrics_chr, models_chr = models_chr,
+                                                            model_type_1L_chr = model_type_1L_chr, order_1L_int = order_1L_int, period_1L_int = period_1L_int, predictors_chr = predictors_chr, prefix_1L_chr = prefix_1L_chr ,
+                                                            stepwise_1L_lgl = stepwise_1L_lgl, terms_1L_chr = .x, terms_ls = NULL, test_1L_int = test_1L_int,
+                                                            type_1L_chr = type_1L_chr, what_1L_chr = what_1L_chr)) %>% stats::setNames(names(terms_ls))
+    if(length(ts_models_xx) == 1){
+      ts_models_xx <- ts_models_xx %>% purrr::pluck(1)
+    }else{
+      if(collapse_1L_lgl){
+        mabels_ls <- ts_models_xx %>% purrr::map2(names(ts_models_xx),
+                                                  ~{
+                                                    name_1L_chr <- .y
+                                                    .x$mabels_ls %>% purrr::map(~{
+                                                      mabel_tb <- .x
+                                                      names(mabel_tb) <- paste0(names(mabel_tb), paste0("_", name_1L_chr))
+                                                      mabel_tb
+                                                    })}
+        )
+        vars_chr <- mabels_ls[[1]] %>% names()
+        mabels_ls <- vars_chr %>%
+          purrr::map(~ {
+            name_1L_chr <- .x
+            mabels_ls %>% purrr::map_dfc(~.x %>% purrr::pluck(name_1L_chr))
+          }) %>% stats::setNames(vars_chr)
+        ts_models_xx <- ts_models_xx %>% purrr::pluck(1)
+        ts_models_xx$mabels_ls <- mabels_ls
+      }
+    }
+  }
+  return(ts_models_xx)
+}
+make_ts_models_ls <- function(mabels_ls = list(), args_ls = make_tfmn_args_ls(), cumulatives_args_ls = make_tfmn_args_ls(), fabels_ls = list(), join_to_args_ls = make_tfmn_args_ls(),
+                              predictor_args_ls = make_tfmn_args_ls(), models_chr = character(0), test_1L_int = integer(0)){
+  ts_models_ls <- list(mabels_ls = mabels_ls, args_ls = args_ls, cumulatives_args_ls = cumulatives_args_ls, fabels_ls = fabels_ls, join_to_args_ls = join_to_args_ls,
+                       predictor_args_ls = predictor_args_ls, models_chr = models_chr, test_1L_int = test_1L_int)
+  return(ts_models_ls)
 }

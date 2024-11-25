@@ -60,9 +60,9 @@ plot_scatter(
 \item{what_1L_chr}{What (a character vector of length one), Default: character(0)}
 }
 \value{
-No return value, called for side effects.
+Plot (an output object of multiple potential types)
 }
 \description{
-plot_scatter() is a Plot function that plots data. Specifically, this function implements an algorithm to plot scatter. The function is called for its side effects and does not return a value.
+plot_scatter() is a Plot function that plots data. Specifically, this function implements an algorithm to plot scatter. The function returns Plot (an output object of multiple potential types).
 }
 \keyword{internal}

@@ -10,7 +10,7 @@ get_tsibble(
   frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal"),
   key_totals_ls = NULL,
   key_vars_chr = character(0),
-  metrics_chr = make_metric_vars(),
+  metrics_chr = character(0),
   prefix_1L_chr = "Cumulative",
   type_1L_chr = c("totals", "key", "wide", "main", "cumulative"),
   what_1L_chr = character(0)
@@ -27,7 +27,7 @@ get_tsibble(
 
 \item{key_vars_chr}{Key variables (a character vector), Default: character(0)}
 
-\item{metrics_chr}{Metrics (a character vector), Default: make_metric_vars()}
+\item{metrics_chr}{Metrics (a character vector), Default: character(0)}
 
 \item{prefix_1L_chr}{Prefix (a character vector of length one), Default: 'Cumulative'}
 

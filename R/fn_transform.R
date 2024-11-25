@@ -110,6 +110,44 @@ transform_output <- function (output_ls)
         0, .x)) %>% purrr::flatten_dbl()
     return(output_ls)
 }
+#' Transform to model input
+#' @description transform_to_mdl_input() is a Transform function that edits an object in such a way that core object attributes - e.g. shape, dimensions, elements, type - are altered. Specifically, this function implements an algorithm to transform to model input. The function returns Data (a tsibble).
+#' @param data_xx Data (an output object of multiple potential types)
+#' @param ts_models_ls Time series models (a list), Default: make_ts_models_ls()
+#' @return Data (a tsibble)
+#' @rdname transform_to_mdl_input
+#' @export 
+#' @importFrom assertthat assert_that
+#' @importFrom rlang exec
+#' @importFrom dplyr left_join
+#' @keywords internal
+transform_to_mdl_input <- function (data_xx, ts_models_ls = make_ts_models_ls()) 
+{
+    assertthat::assert_that(!identical(ts_models_ls, make_ts_models_ls()))
+    args_ls <- ts_models_ls$args_ls
+    cumulatives_args_ls <- ts_models_ls$cumulatives_args_ls
+    predictor_args_ls <- ts_models_ls$predictor_args_ls
+    join_to_args_ls <- ts_models_ls$join_to_args_ls
+    data_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!args_ls)
+    if (!identical(predictor_args_ls, make_tfmn_args_ls())) {
+        predictors_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, 
+            !!!predictor_args_ls)
+        data_tsb <- dplyr::left_join(data_tsb, predictors_tsb)
+    }
+    if (!identical(cumulatives_args_ls, make_tfmn_args_ls())) {
+        cumulatives_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, 
+            !!!cumulatives_args_ls)
+        data_tsb <- dplyr::left_join(data_tsb, cumulatives_tsb)
+    }
+    if (!identical(join_to_args_ls, make_tfmn_args_ls())) {
+        join_to_xx <- join_to_args_ls$join_to_xx
+        join_to_args_ls$join_to_xx <- NULL
+        join_to_tsb <- rlang::exec(get_tsibble, data_xx = join_to_xx, 
+            !!!join_to_args_ls)
+        data_tsb <- dplyr::left_join(data_tsb, join_to_tsb)
+    }
+    return(data_tsb)
+}
 #' Transform to shorthand
 #' @description transform_to_shorthand() is a Transform function that edits an object in such a way that core object attributes - e.g. shape, dimensions, elements, type - are altered. Specifically, this function implements an algorithm to transform to shorthand. The function returns Data (a tibble).
 #' @param data_tb Data (a tibble)
@@ -198,56 +236,25 @@ transform_to_temporal <- function (X_Ready4useDyad = ready4use::Ready4useDyad(),
 #' Transform to tsibble
 #' @description transform_to_tsibble() is a Transform function that edits an object in such a way that core object attributes - e.g. shape, dimensions, elements, type - are altered. Specifically, this function implements an algorithm to transform to tsibble. The function returns Data (a tsibble).
 #' @param data_tb Data (a tibble)
-#' @param activity_1L_chr Activity (a character vector of length one), Default: 'Activity'
-#' @param athlete_roles_chr Athlete roles (a character vector), Default: c("Athlete", "AlumniAthlete")
-#' @param appointments_var_1L_chr Appointments variable (a character vector of length one), Default: 'Appointments'
-#' @param cancellations_var_1L_chr Cancellations variable (a character vector of length one), Default: 'Cancellations'
-#' @param clinical_team_1L_chr Clinical team (a character vector of length one), Default: 'Clinical Team'
-#' @param clinician_1L_chr Clinician (a character vector of length one), Default: 'Clinician'
-#' @param clinician_discipline_1L_chr Clinician discipline (a character vector of length one), Default: 'Service'
-#' @param components_chr Components (a character vector), Default: c("Year", "Quarter", "Week")
-#' @param cost_var_1L_chr Cost variable (a character vector of length one), Default: 'Cost'
 #' @param date_tfmn_fn Date transformation (a function), Default: identity
-#' @param days_1L_chr Days (a character vector of length one), Default: 'Weekday'
-#' @param duration_1L_chr Duration (a character vector of length one), Default: 'Duration'
-#' @param exclude_chr Exclude (a character vector), Default: 'Group'
-#' @param fiscal_start_1L_int Fiscal start (an integer vector of length one), Default: 7
-#' @param group_1L_chr Group (a character vector of length one), Default: character(0)
+#' @param focused_args_ls Focused arguments (a list), Default: NULL
+#' @param focused_fn Focused (a function), Default: NULL
 #' @param index_1L_chr Index (a character vector of length one), Default: 'Date'
-#' @param is_wide_1L_lgl Is wide (a logical vector of length one), Default: F
 #' @param key_vars_chr Key variables (a character vector), Default: character(0)
 #' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
-#' @param referrals_var_1L_chr Referrals variable (a character vector of length one), Default: 'Referrals'
-#' @param referrers_1L_chr Referrers (a character vector of length one), Default: 'Referrer Role'
-#' @param severity_1L_chr Severity (a character vector of length one), Default: 'Severity'
-#' @param team_disciplines_1L_chr Team disciplines (a character vector of length one), Default: 'Disciplines'
 #' @param temporal_vars_chr Temporal variables (a character vector), Default: make_temporal_vars()
-#' @param uid_var_1L_chr Unique identifier variable (a character vector of length one), Default: 'UID'
 #' @param type_1L_chr Type (a character vector of length one), Default: c("main", "focused")
-#' @param what_1L_chr What (a character vector of length one), Default: c("all", "totals")
 #' @return Data (a tsibble)
 #' @rdname transform_to_tsibble
 #' @export 
 #' @importFrom tsibble as_tsibble
 #' @importFrom tidyselect all_of
-#' @importFrom dplyr select mutate group_by across summarise ungroup everything
-#' @importFrom tidyr all_of
-#' @importFrom rlang sym
-transform_to_tsibble <- function (data_tb, activity_1L_chr = "Activity", athlete_roles_chr = c("Athlete", 
-    "AlumniAthlete"), appointments_var_1L_chr = "Appointments", 
-    cancellations_var_1L_chr = "Cancellations", clinical_team_1L_chr = "Clinical Team", 
-    clinician_1L_chr = "Clinician", clinician_discipline_1L_chr = "Service", 
-    components_chr = c("Year", "Quarter", "Week"), cost_var_1L_chr = "Cost", 
-    date_tfmn_fn = identity, days_1L_chr = "Weekday", duration_1L_chr = "Duration", 
-    exclude_chr = "Group", fiscal_start_1L_int = 7L, group_1L_chr = character(0), 
-    index_1L_chr = "Date", is_wide_1L_lgl = F, key_vars_chr = character(0), 
-    metrics_chr = make_metric_vars(), referrals_var_1L_chr = "Referrals", 
-    referrers_1L_chr = "Referrer Role", severity_1L_chr = "Severity", 
-    team_disciplines_1L_chr = "Disciplines", temporal_vars_chr = make_temporal_vars(), 
-    uid_var_1L_chr = "UID", type_1L_chr = c("main", "focused"), 
-    what_1L_chr = c("all", "totals")) 
+#' @importFrom rlang exec
+transform_to_tsibble <- function (data_tb, date_tfmn_fn = identity, focused_args_ls = NULL, 
+    focused_fn = NULL, index_1L_chr = "Date", key_vars_chr = character(0), 
+    metrics_chr = make_metric_vars(), temporal_vars_chr = make_temporal_vars(), 
+    type_1L_chr = c("main", "focused")) 
 {
-    what_1L_chr <- match.arg(what_1L_chr)
     type_1L_chr <- match.arg(type_1L_chr)
     if (type_1L_chr == "main") {
         data_tb <- make_metrics_summary(data_tb, index_1L_chr = index_1L_chr, 
@@ -267,72 +274,7 @@ transform_to_tsibble <- function (data_tb, activity_1L_chr = "Activity", athlete
         }
     }
     else {
-        if (!is_wide_1L_lgl) {
-            data_tb <- transform_to_prep(data_tb, activity_1L_chr = activity_1L_chr, 
-                athlete_roles_chr = athlete_roles_chr, appointments_var_1L_chr = appointments_var_1L_chr, 
-                cancellations_var_1L_chr = cancellations_var_1L_chr, 
-                clinical_team_1L_chr = clinical_team_1L_chr, 
-                clinician_1L_chr = clinician_1L_chr, clinician_discipline_1L_chr = clinician_discipline_1L_chr, 
-                components_chr = components_chr, cost_var_1L_chr = cost_var_1L_chr, 
-                days_1L_chr = days_1L_chr, duration_1L_chr = duration_1L_chr, 
-                exclude_chr = exclude_chr, group_1L_chr = group_1L_chr, 
-                index_1L_chr = index_1L_chr, referrals_var_1L_chr = referrals_var_1L_chr, 
-                referrers_1L_chr = referrers_1L_chr, severity_1L_chr = severity_1L_chr, 
-                team_disciplines_1L_chr = team_disciplines_1L_chr, 
-                uid_var_1L_chr = uid_var_1L_chr, what_1L_chr = "prep")
-            metrics_chr <- make_metric_vars(appointments_var_1L_chr = appointments_var_1L_chr, 
-                cancellations_var_1L_chr = cancellations_var_1L_chr, 
-                cost_var_1L_chr = cost_var_1L_chr, referrals_var_1L_chr = referrals_var_1L_chr)
-            if (identical(key_vars_chr, character(0))) {
-                key_vars_chr <- get_key_vars(data_tb, activity_1L_chr = activity_1L_chr, 
-                  athlete_roles_chr = athlete_roles_chr, appointments_var_1L_chr = appointments_var_1L_chr, 
-                  cancellations_var_1L_chr = cancellations_var_1L_chr, 
-                  clinical_team_1L_chr = clinical_team_1L_chr, 
-                  clinician_1L_chr = clinician_1L_chr, clinician_discipline_1L_chr = clinician_discipline_1L_chr, 
-                  components_chr = components_chr, cost_var_1L_chr = cost_var_1L_chr, 
-                  days_1L_chr = days_1L_chr, duration_1L_chr = duration_1L_chr, 
-                  exclude_chr = exclude_chr, group_1L_chr = group_1L_chr, 
-                  index_1L_chr = index_1L_chr, referrals_var_1L_chr = referrals_var_1L_chr, 
-                  referrers_1L_chr = referrers_1L_chr, severity_1L_chr = severity_1L_chr, 
-                  team_disciplines_1L_chr = team_disciplines_1L_chr, 
-                  uid_var_1L_chr = uid_var_1L_chr)
-            }
-            data_tb <- transform_to_prep(data_tb, appointments_var_1L_chr = metrics_chr[2], 
-                cancellations_var_1L_chr = metrics_chr[3], cost_var_1L_chr = metrics_chr[4], 
-                index_1L_chr = index_1L_chr, referrals_var_1L_chr = metrics_chr[1], 
-                what_1L_chr = "prep")
-            data_tb <- dplyr::select(data_tb, tidyr::all_of(c(index_1L_chr, 
-                metrics_chr, key_vars_chr)))
-            data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(index_1L_chr), 
-                date_tfmn_fn(!!rlang::sym(index_1L_chr)))) %>% 
-                dplyr::group_by(dplyr::across(tidyr::all_of(c(index_1L_chr, 
-                  key_vars_chr)))) %>% dplyr::summarise(`:=`(!!rlang::sym(metrics_chr[1]), 
-                sum(!!rlang::sym(metrics_chr[1]), na.rm = TRUE)), 
-                `:=`(!!rlang::sym(metrics_chr[2]), sum(!!rlang::sym(metrics_chr[2]), 
-                  na.rm = TRUE)), `:=`(!!rlang::sym(metrics_chr[3]), 
-                  sum(!!rlang::sym(metrics_chr[3]), na.rm = TRUE)), 
-                `:=`(!!rlang::sym(metrics_chr[4]), sum(!!rlang::sym(metrics_chr[4]), 
-                  na.rm = TRUE))) %>% dplyr::ungroup()
-            data_tsb <- data_tb %>% tsibble::as_tsibble(key = key_vars_chr, 
-                index = index_1L_chr)
-            if (what_1L_chr == "totals") {
-                data_tsb <- data_tsb %>% dplyr::select(tidyr::all_of(c(index_1L_chr, 
-                  metrics_chr))) %>% dplyr::summarise(`:=`(!!rlang::sym(metrics_chr[1]), 
-                  sum(!!rlang::sym(metrics_chr[1]), na.rm = TRUE)), 
-                  `:=`(!!rlang::sym(metrics_chr[2]), sum(!!rlang::sym(metrics_chr[2]), 
-                    na.rm = TRUE)), `:=`(!!rlang::sym(metrics_chr[3]), 
-                    sum(!!rlang::sym(metrics_chr[3]), na.rm = TRUE)), 
-                  `:=`(!!rlang::sym(metrics_chr[4]), sum(!!rlang::sym(metrics_chr[4]), 
-                    na.rm = TRUE)))
-            }
-        }
-        else {
-            data_tsb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(index_1L_chr), 
-                date_tfmn_fn(!!rlang::sym(index_1L_chr)))) %>% 
-                dplyr::group_by(!!rlang::sym(index_1L_chr)) %>% 
-                dplyr::summarise(dplyr::across(.cols = dplyr::everything(), 
-                  .fns = sum)) %>% dplyr::ungroup() %>% tsibble::as_tsibble(index = index_1L_chr)
-        }
+        data_tsb <- rlang::exec(focused_fn, data_tb, !!!focused_args_ls)
     }
     return(data_tsb)
 }
