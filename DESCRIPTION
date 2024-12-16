@@ -13,7 +13,7 @@ Description: Tools for undertaking time series analysis of mental health
     the serious package has been made available as part of the process of
     testing and documenting the package.  If you have any questions,
     please contact the authors (matthew.hamilton1@monash.edu).
-License: GPL-3 + file LICENSE
+License: GPL-3
 URL: https://ready4-dev.github.io/serious/,
     https://github.com/ready4-dev/serious,
     https://ready4-dev.github.io/ready4/
@@ -23,6 +23,7 @@ RoxygenNote: 7.3.2
 Suggests: 
     knitr,
     knitrBootstrap,
+    pkgload,
     rmarkdown,
     testthat
 VignetteBuilder: knitr
@@ -54,10 +55,12 @@ Imports:
     tidyselect,
     tsibble,
     xts,
+    youthu (>= 0.0.0.9122),
     youthvars (>= 0.0.0.9129)
 Depends: 
     ready4
-Remotes: 
+Remotes:  
     ready4-dev/ready4show,
     ready4-dev/ready4use,
-    ready4-dev/youthvars
+    ready4-dev/youthvars,
+    ready4-dev/youthu

@@ -187,6 +187,113 @@ get_performance <- function (ts_mdls_ls, data_xx, metric_1L_chr, rank_by_int = i
     }
     return(performance_tb)
 }
+#' Get providers by date
+#' @description get_providers_by_date() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get providers by date. The function returns Summary (a list).
+#' @param providers_tb Providers (a tibble)
+#' @param by_1L_chr By (a character vector of length one), Default: 'year'
+#' @param clients_tb Clients (a tibble), Default: NULL
+#' @param counts_1L_lgl Counts (a logical vector of length one), Default: FALSE
+#' @param date_vars_chr Date variables (a character vector), Default: c("Retainer date", "Date")
+#' @param index_1L_lgl Index (a logical vector of length one), Default: TRUE
+#' @param index_day_1L_chr Index day (a character vector of length one), Default: '01'
+#' @param index_month_1L_chr Index month (a character vector of length one), Default: '07'
+#' @param end_dtm End (a date vector), Default: NULL
+#' @param provider_id_1L_chr Provider identity (a character vector of length one), Default: 'ProviderID'
+#' @param start_dtm Start (a date vector), Default: NULL
+#' @param type_1L_chr Type (a character vector of length one), Default: c("all", "new", "cumulative")
+#' @param what_1L_chr What (a character vector of length one), Default: c("activity", "census", "composite")
+#' @return Summary (a list)
+#' @rdname get_providers_by_date
+#' @export 
+#' @importFrom dplyr pull
+#' @importFrom rlang sym
+#' @importFrom assertthat assert_that
+#' @importFrom purrr map2 map flatten_chr map_int
+#' @keywords internal
+get_providers_by_date <- function (providers_tb, by_1L_chr = "year", clients_tb = NULL, 
+    counts_1L_lgl = FALSE, date_vars_chr = c("Retainer date", 
+        "Date"), index_1L_lgl = TRUE, index_day_1L_chr = "01", 
+    index_month_1L_chr = "07", end_dtm = NULL, provider_id_1L_chr = "ProviderID", 
+    start_dtm = NULL, type_1L_chr = c("all", "new", "cumulative"), 
+    what_1L_chr = c("activity", "census", "composite")) 
+{
+    type_1L_chr <- match.arg(type_1L_chr)
+    what_1L_chr <- match.arg(what_1L_chr)
+    if (is.null(end_dtm)) {
+        end_dtm <- max(max(providers_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[1]))), 
+            ifelse(!is.null(clients_tb), max(clients_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[2]))) %>% 
+                as.POSIXct(), -Inf))
+    }
+    if (is.null(start_dtm)) {
+        start_dtm <- min(min(providers_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[1]))), 
+            ifelse(!is.null(clients_tb), min(clients_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[2]))) %>% 
+                as.POSIXct(), Inf))
+    }
+    if (what_1L_chr %in% c("activity", "composite")) {
+        assertthat::assert_that(!is.null(clients_tb), msg = "You must supply a clients_tb tibble object")
+        activity_ls <- make_cases_ls(clients_tb, by_1L_chr = by_1L_chr, 
+            case_1L_chr = provider_id_1L_chr, date_1L_chr = date_vars_chr[2], 
+            index_1L_lgl = index_1L_lgl, index_day_1L_chr = index_day_1L_chr, 
+            index_month_1L_chr = index_month_1L_chr, end_dtm = end_dtm, 
+            start_dtm = start_dtm)
+        if (type_1L_chr %in% c("new", "cumulative")) {
+            new_activity_ls <- make_new_cases_ls(activity_ls)
+        }
+    }
+    if (what_1L_chr %in% c("census", "composite", "cumulative")) {
+        providers_ls <- make_cases_ls(providers_tb, by_1L_chr = by_1L_chr, 
+            case_1L_chr = provider_id_1L_chr, date_1L_chr = date_vars_chr[1], 
+            index_1L_lgl = index_1L_lgl, index_day_1L_chr = index_day_1L_chr, 
+            index_month_1L_chr = index_month_1L_chr, end_dtm = end_dtm, 
+            start_dtm = start_dtm)
+        if (type_1L_chr %in% c("new", "cumulative")) {
+            new_providers_ls <- make_new_cases_ls(providers_ls)
+        }
+    }
+    if (what_1L_chr == "composite") {
+        composite_ls <- providers_ls %>% purrr::map2(activity_ls, 
+            ~c(.x, .y) %>% unique())
+        if (type_1L_chr %in% c("new", "cumulative")) {
+            new_composite_ls <- new_providers_ls %>% purrr::map2(new_activity_ls, 
+                ~c(.x, .y) %>% unique()) %>% make_new_cases_ls()
+            summary_ls <- new_composite_ls
+        }
+        else {
+            summary_ls <- composite_ls
+        }
+    }
+    else {
+        if (what_1L_chr == "census") {
+            if (type_1L_chr == "new") {
+                summary_ls <- new_providers_ls
+            }
+            else {
+                summary_ls <- providers_ls
+            }
+        }
+        if (what_1L_chr == "activity") {
+            if (type_1L_chr == "new") {
+                summary_ls <- new_activity_ls
+            }
+            else {
+                summary_ls <- activity_ls
+            }
+        }
+    }
+    if (type_1L_chr == "cumulative") {
+        summary_ls <- 1:length(summary_ls) %>% purrr::map(~if (.x == 
+            1) {
+            summary_ls[[.x]]
+        }
+        else {
+            summary_ls[1:.x] %>% purrr::flatten_chr() %>% unique()
+        })
+    }
+    if (counts_1L_lgl) {
+        summary_ls <- summary_ls %>% purrr::map_int(~length(.x))
+    }
+    return(summary_ls)
+}
 #' Get raw Estimatedesident Population data
 #' @description get_raw_erp_data() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get raw estimatedesident population data. The function returns Estimatedesident Population raw (a tibble).
 #' @param uid_1L_chr Unique identifier (a character vector of length one), Default: 'ERP_Q'

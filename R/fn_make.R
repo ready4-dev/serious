@@ -20,6 +20,111 @@ make_age_bands_lup <- function (bands_chr, values_ls, fractions_ls = NULL, type_
     }
     return(age_bands_lup)
 }
+#' Make base case tibble
+#' @description make_base_case_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make base case tibble. The function returns Base case (a tibble).
+#' @param forecast_tb Forecast (a tibble)
+#' @param add_ls Add (a list), Default: NULL
+#' @param scenario_1L_chr Scenario (a character vector of length one), Default: 'Base case'
+#' @param use_1L_chr Use (a character vector of length one), Default: 'Mean'
+#' @return Base case (a tibble)
+#' @rdname make_base_case_tb
+#' @export 
+#' @importFrom dplyr select all_of mutate across where bind_cols everything
+#' @importFrom janitor row_to_names
+#' @importFrom tibble as_tibble
+#' @keywords internal
+make_base_case_tb <- function (forecast_tb, add_ls = NULL, scenario_1L_chr = "Base case", 
+    use_1L_chr = "Mean") 
+{
+    base_case_tb <- forecast_tb %>% dplyr::select(dplyr::all_of(c("Parameter", 
+        use_1L_chr))) %>% t() %>% as.data.frame() %>% janitor::row_to_names(1) %>% 
+        tibble::as_tibble() %>% dplyr::mutate(dplyr::across(dplyr::where(is.character), 
+        as.numeric))
+    bind_ls <- list(Scenario = scenario_1L_chr)
+    if (is.list(add_ls)) {
+        bind_ls <- append(bind_ls, add_ls)
+    }
+    base_case_tb <- base_case_tb %>% dplyr::bind_cols(tibble::as_tibble(bind_ls)) %>% 
+        dplyr::select(Scenario, dplyr::everything())
+    return(base_case_tb)
+}
+#' Make cases list
+#' @description make_cases_ls() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make cases list. The function returns Cases (a list).
+#' @param data_tb Data (a tibble)
+#' @param by_1L_chr By (a character vector of length one), Default: 'year'
+#' @param case_1L_chr Case (a character vector of length one), Default: 'UID'
+#' @param date_1L_chr Date (a character vector of length one), Default: 'Date'
+#' @param index_1L_lgl Index (a logical vector of length one), Default: TRUE
+#' @param index_day_1L_chr Index day (a character vector of length one), Default: '01'
+#' @param index_month_1L_chr Index month (a character vector of length one), Default: '07'
+#' @param end_dtm End (a date vector), Default: NULL
+#' @param start_dtm Start (a date vector), Default: NULL
+#' @return Cases (a list)
+#' @rdname make_cases_ls
+#' @export 
+#' @importFrom purrr map2 discard
+#' @importFrom dplyr filter pull
+#' @importFrom rlang sym
+#' @keywords internal
+make_cases_ls <- function (data_tb, by_1L_chr = "year", case_1L_chr = "UID", date_1L_chr = "Date", 
+    index_1L_lgl = TRUE, index_day_1L_chr = "01", index_month_1L_chr = "07", 
+    end_dtm = NULL, start_dtm = NULL) 
+{
+    start_end_ls <- make_start_end_ls(data_tb, by_1L_chr = by_1L_chr, 
+        case_1L_chr = case_1L_chr, index_1L_lgl = index_1L_lgl, 
+        index_day_1L_chr = index_day_1L_chr, index_month_1L_chr = index_month_1L_chr, 
+        end_dtm = end_dtm, start_dtm = start_dtm)
+    cases_ls <- purrr::map2(start_end_ls$start, start_end_ls$end, 
+        ~{
+            data_tb %>% dplyr::filter(!!rlang::sym(date_1L_chr) >= 
+                .x & !!rlang::sym(date_1L_chr) <= .y) %>% dplyr::pull(!!rlang::sym(case_1L_chr)) %>% 
+                unique() %>% purrr::discard(is.na)
+        })
+    return(cases_ls)
+}
+#' Make cost tibble
+#' @description make_cost_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make cost tibble. The function returns Cost (a tibble).
+#' @param data_tsb Data (a tsibble)
+#' @param cost_1L_chr Cost (a character vector of length one), Default: 'Cost'
+#' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal")
+#' @param group_by_chr Group by (a character vector), Default: character(0)
+#' @param group_fn Group (a function), Default: sum
+#' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
+#' @param temporal_vars_chr Temporal variables (a character vector), Default: make_temporal_vars()
+#' @param unit_1L_chr Unit (a character vector of length one), Default: character(0)
+#' @param unit_cost_1L_chr Unit cost (a character vector of length one), Default: 'UnitCost'
+#' @return Cost (a tibble)
+#' @rdname make_cost_tb
+#' @export 
+#' @importFrom tsibble as_tibble
+#' @importFrom dplyr group_by across summarise where mutate
+#' @importFrom tidyr all_of
+#' @importFrom rlang sym
+#' @keywords internal
+make_cost_tb <- function (data_tsb, cost_1L_chr = "Cost", frequency_1L_chr = c("daily", 
+    "weekly", "monthly", "quarterly", "yearly", "fiscal"), group_by_chr = character(0), 
+    group_fn = sum, metrics_chr = make_metric_vars(), temporal_vars_chr = make_temporal_vars(), 
+    unit_1L_chr = character(0), unit_cost_1L_chr = "UnitCost") 
+{
+    frequency_1L_chr <- match.arg(frequency_1L_chr)
+    date_var_1L_chr <- get_new_index(frequency_1L_chr)
+    temporal_vars_chr <- update_temporal_vars(frequency_1L_chr, 
+        temporal_vars_chr = temporal_vars_chr)
+    metrics_chr <- intersect(metrics_chr, names(data_tsb))
+    cost_tb <- get_tsibble(Y, frequency_1L_chr = frequency_1L_chr, 
+        metrics_chr = metrics_chr) %>% add_temporal_vars(date_var_1L_chr = date_var_1L_chr, 
+        temporal_vars_chr = temporal_vars_chr) %>% tsibble::as_tibble()
+    if (!identical(group_by_chr, character(0))) {
+        cost_tb <- cost_tb %>% dplyr::group_by(dplyr::across(tidyr::all_of(group_by_chr))) %>% 
+            dplyr::summarise(dplyr::across(dplyr::where(is.numeric), 
+                group_fn))
+    }
+    if (!identical(unit_1L_chr, character(0))) {
+        cost_tb <- cost_tb %>% dplyr::mutate(`:=`(!!rlang::sym(unit_cost_1L_chr), 
+            !!rlang::sym(cost_1L_chr)/!!rlang::sym(unit_1L_chr)))
+    }
+    return(cost_tb)
+}
 #' Make cumulatives
 #' @description make_cumulatives() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make cumulatives. The function returns Cumulatives (a character vector).
 #' @param prefix_1L_chr Prefix (a character vector of length one), Default: 'Cumulative'
@@ -148,6 +253,83 @@ make_erp_ds <- function (erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
         erp_xx <- erp_tb
     }
     return(erp_xx)
+}
+#' Make forecast cost tibble
+#' @description make_forecast_cost_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make forecast cost tibble. The function returns Forecast cost (a tibble).
+#' @param fabels_ls Fabels (a list)
+#' @param unit_cost_1L_dbl Unit cost (a double vector of length one)
+#' @param fixed_cost_1L_dbl Fixed cost (a double vector of length one), Default: 0
+#' @param what_1L_chr What (a character vector of length one), Default: 'Appointments'
+#' @return Forecast cost (a tibble)
+#' @rdname make_forecast_cost_tb
+#' @export 
+#' @importFrom dplyr mutate across starts_with case_when
+#' @importFrom tidyr pivot_longer pivot_wider
+#' @importFrom stringr str_remove str_replace_all
+#' @keywords internal
+make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_dbl = 0, 
+    what_1L_chr = "Appointments") 
+{
+    forecast_mean_tb <- make_forecasts_tb(fabels_ls, tfmn_args_ls = list(y = unit_cost_1L_dbl), 
+        tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both")
+    forecast_cost_tb <- forecast_mean_tb %>% dplyr::mutate(dplyr::across(dplyr::starts_with("Cost"), 
+        ~.x + fixed_cost_1L_dbl, .names = "Total{.col}"))
+    forecast_cost_tb <- forecast_cost_tb %>% tidyr::pivot_longer(cols = names(forecast_cost_tb), 
+        names_to = "Parameter") %>% dplyr::mutate(Statistic = Parameter %>% 
+        stringr::str_remove("TotalCost_") %>% stringr::str_remove("Cost_") %>% 
+        stringr::str_replace_all("_", " ") %>% stringr::str_replace_all(".mean", 
+        "Mean")) %>% dplyr::mutate(Parameter = dplyr::case_when(startsWith(Parameter, 
+        "Cost") ~ paste0(what_1L_chr, " Costs"), startsWith(Parameter, 
+        "Total") ~ "Total Cost", T ~ what_1L_chr)) %>% tidyr::pivot_wider(names_from = "Statistic", 
+        values_from = "value")
+    return(forecast_cost_tb)
+}
+#' Make forecasts tibble
+#' @description make_forecasts_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make forecasts tibble. The function returns Forecast (a tibble).
+#' @param fabels_ls Fabels (a list)
+#' @param group_by_1L_chr Group by (a character vector of length one), Default: character(0)
+#' @param group_fn Group (a function), Default: sum
+#' @param summary_fn Summary (a function), Default: mean
+#' @param tfmn_args_ls Transformation arguments (a list), Default: NULL
+#' @param tfmn_fn Transformation (a function), Default: NULL
+#' @param tfmn_pattern_1L_chr Transformation pattern (a character vector of length one), Default: 'Transformed_{.col}'
+#' @param type_1L_chr Type (a character vector of length one), Default: c("default", "grouped", "summary", "both")
+#' @param what_1L_chr What (a character vector of length one), Default: 'Appointments'
+#' @return Forecast (a tibble)
+#' @rdname make_forecasts_tb
+#' @export 
+#' @importFrom purrr pluck
+#' @importFrom fabletools hilo unpack_hilo
+#' @importFrom tsibble as_tibble
+#' @importFrom dplyr mutate across group_by summarise where
+#' @importFrom rlang exec
+#' @importFrom tidyr all_of
+#' @keywords internal
+make_forecasts_tb <- function (fabels_ls, group_by_1L_chr = character(0), group_fn = sum, 
+    summary_fn = mean, tfmn_args_ls = NULL, tfmn_fn = NULL, tfmn_pattern_1L_chr = "Transformed_{.col}", 
+    type_1L_chr = c("default", "grouped", "summary", "both"), 
+    what_1L_chr = "Appointments") 
+{
+    type_1L_chr <- match.arg(type_1L_chr)
+    forecast_tb <- fabels_ls %>% purrr::pluck(what_1L_chr) %>% 
+        fabletools::hilo() %>% fabletools::unpack_hilo(c(`80%`, 
+        `95%`)) %>% tsibble::as_tibble()
+    group_by_chr <- c(".model", group_by_1L_chr)
+    if (!is.null(tfmn_fn)) {
+        forecast_tb <- forecast_tb %>% dplyr::mutate(dplyr::across(c(".mean", 
+            "80%_lower", "80%_upper", "95%_lower", "95%_upper"), 
+            ~rlang::exec(tfmn_fn, .x, !!!tfmn_args_ls), .names = tfmn_pattern_1L_chr))
+    }
+    if (type_1L_chr %in% c("grouped", "both")) {
+        forecast_tb <- forecast_tb %>% dplyr::group_by(dplyr::across(tidyr::all_of(group_by_chr))) %>% 
+            dplyr::summarise(dplyr::across(dplyr::where(is.numeric), 
+                group_fn))
+    }
+    if (type_1L_chr %in% c("summary", "both")) {
+        forecast_tb <- forecast_tb %>% dplyr::summarise(dplyr::across(dplyr::where(is.numeric), 
+            summary_fn))
+    }
+    return(forecast_tb)
 }
 #' Make medicare dataset
 #' @description make_medicare_ds() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make medicare dataset. The function returns a Medicare Benefits Schedule (an output object of multiple potential types).
@@ -302,6 +484,28 @@ make_metrics_summary <- function (data_tb, index_1L_chr, key_vars_chr, metrics_c
         ~sum(.x, na.rm = T)), .groups = "drop")
     return(summary_tb)
 }
+#' Make new cases list
+#' @description make_new_cases_ls() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make new cases list. The function returns New cases (a list).
+#' @param cases_ls Cases (a list)
+#' @return New cases (a list)
+#' @rdname make_new_cases_ls
+#' @export 
+#' @importFrom purrr map flatten_chr pluck
+#' @keywords internal
+make_new_cases_ls <- function (cases_ls) 
+{
+    new_cases_ls <- 1:length(cases_ls) %>% purrr::map(~{
+        if (.x == 1) {
+            exclude_chr <- character(0)
+        }
+        else {
+            exclude_chr <- cases_ls[1:(.x - 1)] %>% purrr::flatten_chr() %>% 
+                unique()
+        }
+        setdiff(cases_ls %>% purrr::pluck(.x), exclude_chr)
+    })
+    return(new_cases_ls)
+}
 #' Make new correspondences
 #' @description make_new_correspondences() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make new correspondences. The function is called for its side effects and does not return a value.
 #' @param data_tb Data (a tibble), Default: NULL
@@ -335,6 +539,51 @@ make_new_correspondences <- function (data_tb = NULL, key_1L_chr = character(0),
             new_nms_chr = unname(abbreviations_chr))
     return(x_ready4show_correspondences)
 }
+#' Make rebate cap parameters
+#' @description make_rebate_cap_params() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make rebate cap parameters. The function returns Parameters (a list).
+#' @param data_tb Data (a tibble)
+#' @param scenarios_xx Scenarios (an output object of multiple potential types)
+#' @param appointments_1L_chr Appointments (a character vector of length one), Default: 'Appointments'
+#' @param appointments_cdn_1L_chr Appointments condition (a character vector of length one), Default: 'Activity == "Appointment"'
+#' @param cancellations_cdn_1L_chr Cancellations condition (a character vector of length one), Default: 'Activity == "Cancellation"'
+#' @param uids_xx Unique identifiers (an output object of multiple potential types), Default: NULL
+#' @return Parameters (a list)
+#' @rdname make_rebate_cap_params
+#' @export 
+#' @importFrom dplyr filter summarise pull mutate
+#' @importFrom purrr map_dbl
+#' @keywords internal
+make_rebate_cap_params <- function (data_tb, scenarios_xx, appointments_1L_chr = "Appointments", 
+    appointments_cdn_1L_chr = "Activity == \"Appointment\"", 
+    cancellations_cdn_1L_chr = "Activity == \"Cancellation\"", 
+    uids_xx = NULL) 
+{
+    appointments_tb <- data_tb %>% dplyr::filter(eval(parse(text = appointments_cdn_1L_chr)))
+    cancellations_tb <- data_tb %>% dplyr::filter(eval(parse(text = cancellations_cdn_1L_chr)))
+    appointment_cost_1L_dbl <- appointments_tb %>% dplyr::summarise(Cost = mean(Cost)) %>% 
+        dplyr::pull(Cost)
+    max_cost_1L_dbl <- appointments_tb %>% dplyr::summarise(Cost = max(Cost)) %>% 
+        dplyr::pull(Cost)
+    cancellation_cost_1L_dbl <- cancellations_tb %>% dplyr::summarise(Cost = mean(Cost)) %>% 
+        dplyr::pull(Cost)
+    scenario_costs_dbl <- scenarios_xx %>% purrr::map_dbl(~{
+        max_1L_dbl <- .x
+        (appointments_tb %>% dplyr::mutate(Cost = Cost %>% purrr::map_dbl(~min(.x, 
+            max_1L_dbl))) %>% dplyr::summarise(Cost = mean(Cost)) %>% 
+            dplyr::pull(Cost))
+    })
+    ratios_dbl <- scenario_costs_dbl/appointment_cost_1L_dbl
+    mean_copays_dbl <- appointment_cost_1L_dbl - scenario_costs_dbl
+    max_copays_dbl <- max_cost_1L_dbl - scenario_costs_dbl
+    cancellation_copays_dbl <- (1 - ratios_dbl) * cancellation_cost_1L_dbl
+    params_ls <- list(appointment_cost_1L_dbl = appointment_cost_1L_dbl, 
+        appointments_ratio_dbl = rep(1, length(scenarios_xx)), 
+        cancellation_cost_1L_dbl = cancellation_cost_1L_dbl, 
+        cancellation_copays_dbl = cancellation_copays_dbl, max_cost_1L_dbl = max_cost_1L_dbl, 
+        max_copays_dbl = max_copays_dbl, mean_copays_dbl = mean_copays_dbl, 
+        scenario_costs_dbl = scenario_costs_dbl, ratios_dbl = ratios_dbl)
+    return(params_ls)
+}
 #' Make retainers
 #' @description make_retainers() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make retainers. The function returns Data (an output object of multiple potential types).
 #' @param retainers_tb Retainers (a tibble)
@@ -351,19 +600,21 @@ make_new_correspondences <- function (data_tb = NULL, key_1L_chr = character(0),
 #' @param fiscal_start_1L_int Fiscal start (an integer vector of length one), Default: 7
 #' @param index_1L_chr Index (a character vector of length one), Default: 'Date'
 #' @param offset_1L_int Offset (an integer vector of length one), Default: integer(0)
+#' @param price_indices_dbl Price indices (a double vector), Default: numeric(0)
+#' @param price_ref_1L_int Price reference (an integer vector of length one), Default: 1
 #' @param provider_id_1L_chr Provider identity (a character vector of length one), Default: 'ProviderID'
-#' @param reset_new_1L_lgl Reset new (a logical vector of length one), Default: TRUE
 #' @param start_date_dtm Start date (a date vector), Default: NULL
+#' @param time_var_1L_chr Time variable (a character vector of length one), Default: 'FiscalYear'
 #' @param unit_1L_chr Unit (a character vector of length one), Default: 'days'
 #' @return Data (an output object of multiple potential types)
 #' @rdname make_retainers
 #' @export 
-#' @importFrom dplyr pull filter select mutate across case_when bind_rows arrange group_by summarise first everything left_join rename
+#' @importFrom dplyr pull filter left_join select rename group_by summarise mutate case_when bind_rows arrange across everything
 #' @importFrom rlang sym
-#' @importFrom lubridate interval as.duration duration
-#' @importFrom tsibble append_row fill_gaps as_tibble as_tsibble
 #' @importFrom purrr discard
-#' @importFrom tibble tibble
+#' @importFrom tidyr all_of
+#' @importFrom lubridate duration interval as.duration
+#' @importFrom tsibble append_row fill_gaps as_tibble
 #' @importFrom ready4use Ready4useDyad add_dictionary
 #' @keywords internal
 make_retainers <- function (retainers_tb, as_tsibble_1L_lgl = FALSE, censor_1L_lgl = FALSE, 
@@ -371,8 +622,8 @@ make_retainers <- function (retainers_tb, as_tsibble_1L_lgl = FALSE, censor_1L_l
     data_tb = NULL, date_var_1L_chr = "Retainer date", default_1L_dbl = numeric(0), 
     dyad_1L_lgl = FALSE, end_date_dtm = NULL, fill_gaps_1L_lgl = FALSE, 
     fiscal_start_1L_int = 7L, index_1L_chr = "Date", offset_1L_int = integer(0), 
-    provider_id_1L_chr = "ProviderID", reset_new_1L_lgl = TRUE, 
-    start_date_dtm = NULL, unit_1L_chr = "days") 
+    price_indices_dbl = numeric(0), price_ref_1L_int = 1L, provider_id_1L_chr = "ProviderID", 
+    start_date_dtm = NULL, time_var_1L_chr = "FiscalYear", unit_1L_chr = "days") 
 {
     if (is.null(end_date_dtm)) {
         end_date_dtm <- max(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr)))
@@ -390,10 +641,58 @@ make_retainers <- function (retainers_tb, as_tsibble_1L_lgl = FALSE, censor_1L_l
                 start_date_dtm)
         }
     }
-    retainers_tsb <- update_retainers_ds(retainers_tb, cost_var_1L_chr = cost_var_1L_chr, 
-        date_var_1L_chr = date_var_1L_chr, end_date_dtm = end_date_dtm) %>% 
-        transform_to_tsibble(index_1L_chr = index_1L_chr, metrics_chr = c("Clinicians", 
-            "Retainer")) %>% dplyr::select(!!rlang::sym(index_1L_chr), 
+    if (!is.null(data_tb)) {
+        itemised_chr <- retainers_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>% 
+            unique() %>% purrr::discard(is.na)
+        active_chr <- data_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>% 
+            unique() %>% purrr::discard(is.na)
+        intersecting_chr <- intersect(itemised_chr, active_chr)
+        if (identical(default_1L_dbl, numeric(0))) {
+            default_1L_dbl <- mean(retainers_tb %>% dplyr::pull(!!rlang::sym(cost_var_1L_chr)), 
+                na.rm = TRUE)
+        }
+        filtered_tb <- retainers_tb %>% dplyr::filter(!!rlang::sym(provider_id_1L_chr) %in% 
+            active_chr) %>% dplyr::left_join(data_tb %>% dplyr::select(tidyr::all_of(c(provider_id_1L_chr, 
+            index_1L_chr))) %>% dplyr::rename(TESTDATE = !!rlang::sym(index_1L_chr)) %>% 
+            dplyr::group_by(!!rlang::sym(provider_id_1L_chr)) %>% 
+            dplyr::summarise(TESTDATE = min(TESTDATE))) %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) <= 
+            TESTDATE) %>% dplyr::select(-TESTDATE)
+        filtered_chr <- filtered_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>% 
+            unique() %>% purrr::discard(is.na)
+        additional_chr <- setdiff(active_chr, filtered_chr)
+        if (!identical(additional_chr, character(0))) {
+            if (!is.null(start_date_dtm) & identical(offset_1L_int, 
+                integer(0))) {
+                due_date_dtm <- start_date_dtm
+            }
+            else {
+                due_date_dtm <- min(filtered_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) + 
+                  lubridate::duration(offset_1L_int, units = unit_1L_chr)
+            }
+            preexisting_tb <- data_tb %>% dplyr::filter(!!rlang::sym(provider_id_1L_chr) %in% 
+                additional_chr) %>% dplyr::group_by(!!rlang::sym(provider_id_1L_chr)) %>% 
+                dplyr::select(!!rlang::sym(index_1L_chr)) %>% 
+                dplyr::summarise(`:=`(!!rlang::sym(index_1L_chr), 
+                  min(!!rlang::sym(index_1L_chr))))
+            preexisting_tb <- preexisting_tb %>% dplyr::left_join(retainers_tb %>% 
+                dplyr::select(tidyr::all_of(c(provider_id_1L_chr, 
+                  cost_var_1L_chr)))) %>% dplyr::mutate(`:=`(!!rlang::sym(cost_var_1L_chr), 
+                dplyr::case_when(is.na(!!rlang::sym(cost_var_1L_chr)) ~ 
+                  default_1L_dbl, T ~ !!rlang::sym(cost_var_1L_chr)))) %>% 
+                dplyr::rename(`:=`(!!rlang::sym(date_var_1L_chr), 
+                  !!rlang::sym(index_1L_chr)))
+            filtered_tb <- filtered_tb %>% dplyr::bind_rows(preexisting_tb) %>% 
+                dplyr::arrange(!!rlang::sym(date_var_1L_chr))
+        }
+    }
+    else {
+        filtered_tb <- retainers_tb
+    }
+    retainers_tsb <- update_retainers_ds(filtered_tb, cost_var_1L_chr = cost_var_1L_chr, 
+        date_var_1L_chr = date_var_1L_chr, end_date_dtm = end_date_dtm, 
+        price_indices_dbl = price_indices_dbl, price_ref_1L_int = price_ref_1L_int, 
+        time_var_1L_chr = time_var_1L_chr) %>% transform_to_tsibble(index_1L_chr = index_1L_chr, 
+        metrics_chr = c("Clinicians", "Retainer")) %>% dplyr::select(!!rlang::sym(index_1L_chr), 
         Clinicians, Retainer)
     if (start_date_dtm < min(retainers_tsb %>% dplyr::pull(!!rlang::sym(index_1L_chr)))) {
         lubridate::interval(start_date_dtm, min(retainers_tsb %>% 
@@ -411,44 +710,6 @@ make_retainers <- function (retainers_tb, as_tsibble_1L_lgl = FALSE, censor_1L_l
     }
     retainers_tsb <- add_temporal_vars(retainers_tsb, date_var_1L_chr = index_1L_chr, 
         fiscal_start_1L_int = fiscal_start_1L_int)
-    if (!is.null(data_tb)) {
-        preexisting_chr <- setdiff(data_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>% 
-            unique(), retainers_tb %>% dplyr::pull(!!rlang::sym(provider_id_1L_chr)) %>% 
-            unique()) %>% purrr::discard(is.na)
-        if (!identical(preexisting_chr, character(0))) {
-            if (identical(default_1L_dbl, numeric(0))) {
-                default_1L_dbl <- mean(retainers_tb %>% dplyr::pull(!!rlang::sym(cost_var_1L_chr)), 
-                  na.rm = TRUE)
-            }
-            if (!is.null(start_date_dtm) & identical(offset_1L_int, 
-                integer(0))) {
-                due_date_dtm <- start_date_dtm
-            }
-            else {
-                due_date_dtm <- min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) + 
-                  lubridate::duration(offset_1L_int, units = unit_1L_chr)
-            }
-            preexisting_tb <- retainers_tb %>% dplyr::filter(F) %>% 
-                dplyr::bind_rows(tibble::tibble(`:=`(!!rlang::sym(date_var_1L_chr), 
-                  due_date_dtm), `:=`(!!rlang::sym(provider_id_1L_chr), 
-                  preexisting_chr), `:=`(!!rlang::sym(cost_var_1L_chr), 
-                  default_1L_dbl)))
-            preexisting_tsb <- preexisting_tb %>% make_retainers(as_tsibble_1L_lgl = T, 
-                cumulatives_1L_lgl = F, censor_1L_lgl = T, cost_var_1L_chr = cost_var_1L_chr, 
-                data_tb = NULL, date_var_1L_chr = date_var_1L_chr, 
-                dyad_1L_lgl = FALSE, end_date_dtm = end_date_dtm, 
-                fill_gaps_1L_lgl = fill_gaps_1L_lgl, fiscal_start_1L_int = fiscal_start_1L_int)
-            retainers_tsb <- retainers_tsb %>% tsibble::as_tibble() %>% 
-                dplyr::bind_rows(preexisting_tsb %>% tsibble::as_tibble()) %>% 
-                dplyr::arrange(!!rlang::sym(index_1L_chr)) %>% 
-                dplyr::group_by(!!rlang::sym(index_1L_chr)) %>% 
-                dplyr::summarise(dplyr::across(setdiff(names(retainers_tsb), 
-                  c(index_1L_chr, make_temporal_vars())), sum), 
-                  dplyr::across(intersect(names(retainers_tsb), 
-                    make_temporal_vars()), dplyr::first)) %>% 
-                tsibble::as_tsibble(index = !!rlang::sym(index_1L_chr))
-        }
-    }
     if (cumulatives_1L_lgl) {
         retainers_tsb <- retainers_tsb %>% dplyr::mutate(CumulativeRetainer = cumsum(Retainer), 
             CumulativeClinicians = cumsum(Clinicians))
@@ -456,20 +717,9 @@ make_retainers <- function (retainers_tb, as_tsibble_1L_lgl = FALSE, censor_1L_l
             Clinicians, Retainer, CumulativeClinicians, CumulativeRetainer, 
             dplyr::everything())
     }
-    if (!is.null(data_tb)) {
-        if (!identical(preexisting_chr, character(0))) {
-            if (reset_new_1L_lgl) {
-                retainers_tsb <- retainers_tsb %>% dplyr::left_join(preexisting_tsb %>% 
-                  dplyr::select(Clinicians) %>% dplyr::rename(SubtractThisPlease = Clinicians)) %>% 
-                  dplyr::mutate(Clinicians = dplyr::case_when(!is.na(SubtractThisPlease) ~ 
-                    Clinicians - SubtractThisPlease, TRUE ~ Clinicians)) %>% 
-                  dplyr::select(-SubtractThisPlease)
-            }
-            if (censor_1L_lgl) 
-                retainers_tsb <- retainers_tsb %>% dplyr::filter(!!rlang::sym(index_1L_chr) >= 
-                  min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))))
-        }
-    }
+    if (censor_1L_lgl) 
+        retainers_tsb <- retainers_tsb %>% dplyr::filter(!!rlang::sym(index_1L_chr) >= 
+            min(retainers_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))))
     if (!as_tsibble_1L_lgl) {
         data_xx <- retainers_tsb %>% tsibble::as_tibble()
     }
@@ -674,6 +924,77 @@ make_sampling_lup <- function (shares_dbl, values_xx, var_nm_1L_chr, prefix_1L_c
         dplyr::everything())
     return(sampling_lup)
 }
+#' Make scenarios tibble
+#' @description make_scenarios_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make scenarios tibble. The function returns Scenarios (a tibble).
+#' @param base_case_tb Base case (a tibble)
+#' @param data_tb Data (a tibble)
+#' @param scenarios_xx Scenarios (an output object of multiple potential types)
+#' @param add_cumulatives_1L_lgl Add cumulatives (a logical vector of length one), Default: F
+#' @param add_fn Add (a function), Default: NULL
+#' @param data_filter_1L_chr Data filter (a character vector of length one), Default: character(0)
+#' @param extra_costs_1L_chr Extra costs (a character vector of length one), Default: character(0)
+#' @param group_by_1L_chr Group by (a character vector of length one), Default: 'UID'
+#' @param new_filter_1L_chr New filter (a character vector of length one), Default: character(0)
+#' @param prefix_1L_chr Prefix (a character vector of length one), Default: ''
+#' @param suffix_1L_chr Suffix (a character vector of length one), Default: ''
+#' @param uids_xx Unique identifiers (an output object of multiple potential types), Default: NULL
+#' @param unit_1L_chr Unit (a character vector of length one), Default: 'Appointments'
+#' @return Scenarios (a tibble)
+#' @rdname make_scenarios_tb
+#' @export 
+#' @importFrom dplyr filter mutate select
+#' @importFrom purrr map_dfr
+#' @importFrom stringr str_replace_all
+#' @importFrom rlang sym exec
+#' @keywords internal
+make_scenarios_tb <- function (base_case_tb, data_tb, scenarios_xx, add_cumulatives_1L_lgl = F, 
+    add_fn = NULL, data_filter_1L_chr = character(0), extra_costs_1L_chr = character(0), 
+    group_by_1L_chr = "UID", new_filter_1L_chr = character(0), 
+    prefix_1L_chr = "", suffix_1L_chr = "", uids_xx = NULL, unit_1L_chr = "Appointments") 
+{
+    if (!identical(data_filter_1L_chr, character(0))) {
+        data_tb <- data_tb %>% dplyr::filter(eval(parse(text = data_filter_1L_chr)))
+    }
+    if (add_cumulatives_1L_lgl) {
+        data_tb <- add_cumulatives(data_tb, metrics_chr = unit_1L_chr, 
+            group_by_1L_chr = group_by_1L_chr)
+    }
+    scenarios_tb <- purrr::map_dfr(scenarios_xx, ~{
+        if (!identical(new_filter_1L_chr, character(0))) {
+            filter_cdn_1L_chr <- stringr::str_replace_all(new_filter_1L_chr, 
+                "\\.x", ifelse(is.character(.x), paste0("\"", 
+                  .x, "\""), as.character(.x)))
+            new_tb <- data_tb %>% dplyr::filter(eval(parse(text = filter_cdn_1L_chr)))
+        }
+        else {
+            filter_cdn_1L_chr <- character(0)
+            new_tb <- data_tb
+        }
+        partial_tb <- base_case_tb %>% dplyr::mutate(Scenario = paste0(prefix_1L_chr, 
+            .x, suffix_1L_chr))
+        if (is.null(add_fn)) {
+            partial_tb <- partial_tb %>% dplyr::mutate(`:=`(!!rlang::sym(unit_1L_chr), 
+                nrow(new_tb)/nrow(data_tb) * !!rlang::sym(unit_1L_chr))) %>% 
+                add_scenario_activity_cost(base_case_tb = base_case_tb, 
+                  unit_1L_chr = unit_1L_chr)
+        }
+        else {
+            args_ls <- list(base_case_tb = base_case_tb, data_tb = data_tb, 
+                filter_cdn_1L_chr = filter_cdn_1L_chr, scenario_1L_xx = .x, 
+                scenarios_xx = scenarios_xx, uids_xx = uids_xx, 
+                unit_1L_chr = unit_1L_chr)
+            partial_tb <- rlang::exec(add_fn, partial_tb, !!!args_ls)
+        }
+        if (!identical(extra_costs_1L_chr, character(0))) {
+            partial_tb <- partial_tb %>% dplyr::mutate(`Total Cost` = !!rlang::sym(paste0(unit_1L_chr, 
+                " Cost")) + !!rlang::sym(extra_costs_1L_chr))
+        }
+        partial_tb
+    })
+    scenarios_tb <- scenarios_tb %>% dplyr::select(c(setdiff(names(scenarios_tb), 
+        "Total Cost"), "Total Cost"))
+    return(scenarios_tb)
+}
 #' Make service summary
 #' @description make_service_summary() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make service summary. The function returns Data (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
@@ -790,6 +1111,46 @@ make_service_summary <- function (data_xx, active_base_1L_chr = "Active", max_pe
     }
     data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
     return(data_xx)
+}
+#' Make start end list
+#' @description make_start_end_ls() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make start end list. The function returns Start end (a list).
+#' @param data_tb Data (a tibble)
+#' @param by_1L_chr By (a character vector of length one), Default: 'year'
+#' @param case_1L_chr Case (a character vector of length one), Default: 'UID'
+#' @param date_1L_chr Date (a character vector of length one), Default: 'Date'
+#' @param index_1L_lgl Index (a logical vector of length one), Default: TRUE
+#' @param index_day_1L_chr Index day (a character vector of length one), Default: '01'
+#' @param index_month_1L_chr Index month (a character vector of length one), Default: '07'
+#' @param end_dtm End (a date vector), Default: NULL
+#' @param start_dtm Start (a date vector), Default: NULL
+#' @return Start end (a list)
+#' @rdname make_start_end_ls
+#' @export 
+#' @importFrom dplyr pull
+#' @importFrom rlang sym
+#' @importFrom lubridate days years
+#' @keywords internal
+make_start_end_ls <- function (data_tb, by_1L_chr = "year", case_1L_chr = "UID", date_1L_chr = "Date", 
+    index_1L_lgl = TRUE, index_day_1L_chr = "01", index_month_1L_chr = "07", 
+    end_dtm = NULL, start_dtm = NULL) 
+{
+    if (is.null(end_dtm)) {
+        end_dtm <- max(data_tb %>% dplyr::pull(!!rlang::sym(date_1L_chr)))
+    }
+    if (is.null(start_dtm)) {
+        start_dtm <- min(data_tb %>% dplyr::pull(!!rlang::sym(date_1L_chr)))
+    }
+    if (index_1L_lgl) {
+        new_dates_ls <- update_start_end_date(end_dtm = end_dtm, 
+            start_dtm = start_dtm, index_day_1L_chr = index_day_1L_chr, 
+            index_month_1L_chr = index_month_1L_chr)
+        start_dtm <- new_dates_ls$start
+        end_dtm <- new_dates_ls$end
+    }
+    start_dates_dtm <- seq(start_dtm, end_dtm, by = by_1L_chr)
+    end_dates_dtm <- start_dates_dtm - lubridate::days(1) + lubridate::years(1)
+    start_end_ls <- list(start = start_dates_dtm, end = end_dates_dtm)
+    return(start_end_ls)
 }
 #' Make summary dataset
 #' @description make_summary_ds() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make summary dataset. The function returns Data (an output object of multiple potential types).

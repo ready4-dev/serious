@@ -137,6 +137,99 @@ get_performance <- function (ts_mdls_ls, data_xx, metric_1L_chr,
   }
   return(performance_tb)
 }
+get_providers_by_date <- function(providers_tb,
+                                  by_1L_chr = "year",
+                                  clients_tb = NULL,
+                                  counts_1L_lgl = FALSE,
+                                  date_vars_chr = c("Retainer date", "Date"),
+                                  index_1L_lgl = TRUE,
+                                  index_day_1L_chr = "01",
+                                  index_month_1L_chr = "07",
+                                  end_dtm = NULL,
+                                  provider_id_1L_chr = "ProviderID",
+                                  start_dtm = NULL,
+                                  type_1L_chr = c("all", "new", "cumulative"),
+                                  what_1L_chr = c("activity", "census", "composite")){
+  type_1L_chr <- match.arg(type_1L_chr)
+  what_1L_chr <- match.arg(what_1L_chr)
+  if (is.null(end_dtm)) {
+    end_dtm <- max(max(providers_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[1]))),
+                   ifelse(!is.null(clients_tb),
+                          max(clients_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[2]))) %>% as.POSIXct(), -Inf))
+  }
+  if (is.null(start_dtm)) {
+    start_dtm <- min(min(providers_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[1]))),
+                     ifelse(!is.null(clients_tb), min(clients_tb %>% dplyr::pull(!!rlang::sym(date_vars_chr[2]))) %>%
+                              as.POSIXct(), Inf))
+  }
+  if(what_1L_chr %in% c("activity", "composite")){
+    assertthat::assert_that(!is.null(clients_tb), msg = "You must supply a clients_tb tibble object")
+    activity_ls <- make_cases_ls(clients_tb,
+                                 by_1L_chr = by_1L_chr,
+                                 case_1L_chr = provider_id_1L_chr,
+                                 date_1L_chr = date_vars_chr[2],
+                                 index_1L_lgl = index_1L_lgl,
+                                 index_day_1L_chr = index_day_1L_chr,
+                                 index_month_1L_chr = index_month_1L_chr,
+                                 end_dtm = end_dtm,
+                                 start_dtm = start_dtm)
+    if(type_1L_chr %in% c("new", "cumulative")){
+      new_activity_ls <- make_new_cases_ls(activity_ls)
+    }
+  }
+  if(what_1L_chr %in% c("census", "composite", "cumulative")){
+    providers_ls <- make_cases_ls(providers_tb,
+                                  by_1L_chr = by_1L_chr,
+                                  case_1L_chr = provider_id_1L_chr,
+                                  date_1L_chr = date_vars_chr[1],
+                                  index_1L_lgl = index_1L_lgl,
+                                  index_day_1L_chr = index_day_1L_chr,
+                                  index_month_1L_chr = index_month_1L_chr,
+                                  end_dtm = end_dtm,
+                                  start_dtm = start_dtm)
+    if(type_1L_chr %in% c("new", "cumulative")){
+      new_providers_ls <- make_new_cases_ls(providers_ls)
+    }
+  }
+  if(what_1L_chr == "composite"){
+    composite_ls <- providers_ls %>% purrr::map2(activity_ls,
+                                                 ~c(.x,.y) %>% unique())
+    if(type_1L_chr %in% c("new", "cumulative")){
+      new_composite_ls <- new_providers_ls %>% purrr::map2(new_activity_ls,
+                                                           ~c(.x,.y) %>% unique()) %>%
+        make_new_cases_ls()
+      summary_ls <- new_composite_ls
+    }else{
+      summary_ls <- composite_ls
+    }
+  }else{
+    if(what_1L_chr == "census"){
+      if(type_1L_chr == "new"){
+        summary_ls <- new_providers_ls
+      }else{
+        summary_ls <- providers_ls
+      }
+    }
+    if(what_1L_chr == "activity"){
+      if(type_1L_chr == "new"){
+        summary_ls <- new_activity_ls
+      }else{
+        summary_ls <- activity_ls
+      }
+    }
+  }
+  if(type_1L_chr == "cumulative"){
+    summary_ls <- 1:length(summary_ls) %>% purrr::map(~if(.x==1){
+      summary_ls[[.x]]
+    }else{
+      summary_ls[1:.x] %>% purrr::flatten_chr() %>% unique()
+    })
+  }
+  if(counts_1L_lgl){
+    summary_ls <- summary_ls %>% purrr::map_int(~length(.x))
+  }
+  return(summary_ls)
+}
 get_raw_erp_data <- function(uid_1L_chr = "ERP_Q",
                              age_chr = as.character(1:115),
                              end_1L_chr = character(0),

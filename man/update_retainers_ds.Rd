@@ -8,7 +8,10 @@ update_retainers_ds(
   retainers_tb,
   cost_var_1L_chr = "Retainer amount",
   date_var_1L_chr = "Retainer date",
-  end_date_dtm = NULL
+  end_date_dtm = NULL,
+  price_indices_dbl = numeric(0),
+  price_ref_1L_int = 1L,
+  time_var_1L_chr = "FiscalYear"
 )
 }
 \arguments{
@@ -19,6 +22,12 @@ update_retainers_ds(
 \item{date_var_1L_chr}{Date variable (a character vector of length one), Default: 'Retainer date'}
 
 \item{end_date_dtm}{End date (a date vector), Default: NULL}
+
+\item{price_indices_dbl}{Price indices (a double vector), Default: numeric(0)}
+
+\item{price_ref_1L_int}{Price reference (an integer vector of length one), Default: 1}
+
+\item{time_var_1L_chr}{Time variable (a character vector of length one), Default: 'FiscalYear'}
 }
 \value{
 Retainers (a tibble)

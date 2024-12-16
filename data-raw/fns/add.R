@@ -1,16 +1,19 @@
-add_date_vars <- function(df,
-                          date_var_1L_chr = "Date"){
-  df <- df %>% dplyr::mutate(Weekday = weekdays(df %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))))
-  df <- df %>% dplyr::mutate(Year = lubridate::year(df %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) %>% as.integer())
-  df <- df %>% dplyr::mutate(Week = lubridate::isoweek(df %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) %>% as.integer())
-  df <- df %>% dplyr::mutate(Quarter = dplyr::case_when(Week %>% purrr::map_lgl(~.x< 14) ~ 1L,
-                                                        Week %>% purrr::map_lgl(~.x > 13 && .x < 27) ~ 2L,
-                                                        Week %>% purrr::map_lgl(~.x > 26 && .x < 40) ~ 3L,
-                                                        Week %>% purrr::map_lgl(~.x > 39) ~ 4L,
-                                                        T ~ NA_integer_))
-  return(df)
+
+add_clinical_ax_scenario <- function(partial_tb,
+                                     base_case_tb,
+                                     data_tb,
+                                     filter_cdn_1L_chr,
+                                     scenario_1L_xx = NULL,
+                                     scenarios_xx = NULL,
+                                     uids_xx = NULL,
+                                     unit_1L_chr = "Appointments"){
+  new_tb <- data_tb %>% dplyr::filter(eval(parse(text = filter_cdn_1L_chr)))
+  partial_tb <- partial_tb %>% dplyr::mutate(!!rlang::sym(unit_1L_chr) := sum(new_tb %>% dplyr::pull(!!rlang::sym(unit_1L_chr))) / sum(data_tb %>% dplyr::pull(!!rlang::sym(unit_1L_chr))) * !!rlang::sym(unit_1L_chr) + 1*(nrow(data_tb)-nrow(new_tb))) %>%
+    add_scenario_activity_cost(base_case_tb = base_case_tb,
+                               unit_1L_chr = unit_1L_chr)
+  return(partial_tb)
 }
-add_cumulatives <- function(data_xx,#X_Ready4useDyad,
+add_cumulatives <- function(data_xx,
                             metrics_chr,
                             arrange_by_1L_chr = character(0),
                             dict_by_ctg_1L_chr = FALSE,
@@ -90,6 +93,18 @@ add_cyclic_cases <- function(data_tb,
   }
   return(data_tb)
 }
+add_date_vars <- function(df,
+                          date_var_1L_chr = "Date"){
+  df <- df %>% dplyr::mutate(Weekday = weekdays(df %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))))
+  df <- df %>% dplyr::mutate(Year = lubridate::year(df %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) %>% as.integer())
+  df <- df %>% dplyr::mutate(Week = lubridate::isoweek(df %>% dplyr::pull(!!rlang::sym(date_var_1L_chr))) %>% as.integer())
+  df <- df %>% dplyr::mutate(Quarter = dplyr::case_when(Week %>% purrr::map_lgl(~.x< 14) ~ 1L,
+                                                        Week %>% purrr::map_lgl(~.x > 13 && .x < 27) ~ 2L,
+                                                        Week %>% purrr::map_lgl(~.x > 26 && .x < 40) ~ 3L,
+                                                        Week %>% purrr::map_lgl(~.x > 39) ~ 4L,
+                                                        T ~ NA_integer_))
+  return(df)
+}
 add_disengaged <- function(data_xx,
                            date_1L_chr,
                            category_1L_chr = "Healthcare",
@@ -99,8 +114,6 @@ add_disengaged <- function(data_xx,
                            dict_by_ctg_1L_chr = FALSE,
                            uid_1L_chr = "UID",
                            var_nm_1L_chr = "Disengaged"){
-
-  #X@ds_tb %>% dplyr::filter(Tenure==0, Activity=="Referral" & Date <= lubridate::ymd("2022-06-30"))
   if(inherits(data_xx,"Ready4useDyad")){
     X_Ready4useDyad <- data_xx
   }else{
@@ -131,7 +144,6 @@ add_disengaged <- function(data_xx,
 add_episodes <- function(data_xx,
                          separation_after_dbl,
                          index_1L_int = integer(0),
-                         #close_after_1L_dbl,
                          active_var_1L_chr = "Active",
                          activity_var_1L_chr = "Activity",
                          date_tfmn_fn = lubridate::ymd,
@@ -157,7 +169,6 @@ add_episodes <- function(data_xx,
   }
   if(identical(index_1L_int, integer(0))){
     episodes_vars_ls <- make_episodes_vars(active_var_1L_chr = active_var_1L_chr, episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl, separations_var_1L_chr = separations_var_1L_chr, flatten_1L_lgl = F)
-    #1:length(separation_after_dbl) %>% purrr::map(~make_episodes_vars(suffix_1L_chr = ifelse(.x==1,"",paste0("_",LETTERS[.x-1]))))
     X_Ready4useDyad <- 1:length(separation_after_dbl) %>%
       purrr::reduce(.init = X_Ready4useDyad,
                     ~  .x %>% add_episodes(separation_after_dbl = separation_after_dbl, index_1L_int = .y, end_date_dtm = end_date_dtm, episodes_vars_chr = episodes_vars_ls[[.y]], unit_1L_chr = unit_1L_chr))
@@ -196,7 +207,6 @@ add_episodes <- function(data_xx,
                        dplyr::across(setdiff(names(X_Ready4useDyad@ds_tb),
                                              c(uid_1L_chr, date_var_1L_chr,
                                                make_episodes_vars(active_var_1L_chr = active_var_1L_chr, episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl, separations_var_1L_chr = separations_var_1L_chr, flatten_1L_lgl = T),
-                                               #episodes_vars_chr[3], episodes_vars_chr[1], episodes_vars_chr[2],
                                                paste0(prefix_1L_chr, episodes_vars_chr[3]),activity_var_1L_chr,temporal_vars_chr, metrics_chr, exclude_chr, paste0(prefix_1L_chr,episodes_vars_chr[2]))), dplyr::last),
                        dplyr::across(intersect(setdiff(make_episodes_vars(active_var_1L_chr = active_var_1L_chr, episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl, separations_var_1L_chr = separations_var_1L_chr, flatten_1L_lgl = T),
                                                        episodes_vars_chr), names(X_Ready4useDyad@ds_tb)), ~0)) %>%
@@ -234,10 +244,6 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
     stop("Supply a positive integer value to periods_1L_int")
   }
   if (!is.null(data_xx)) {
-    # new_data_tsb <- get_tsibble(data_xx, frequency_1L_chr = ts_models_ls$args_ls$frequency_1L_chr,
-    #                             key_totals_ls = ts_models_ls$args_ls$key_totals_ls,
-    #                             key_vars_chr = ts_models_ls$args_ls$key_vars_chr,
-    #                             type_1L_chr = ts_models_ls$args_ls$type_1L_chr, what_1L_chr = ts_models_ls$args_ls$what_1L_chr)
     if(type_1L_chr == "empirical"){
       new_data_tsb <- transform_to_mdl_input(data_xx, ts_models_ls = ts_models_ls)
       if (!identical(ts_models_ls$test_1L_int, integer(0))) {
@@ -245,7 +251,6 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
         test_dtm <- new_data_tsb %>% dplyr::pull(!!rlang::sym(index_1L_chr)) %>% unique() %>% sort() %>% tail(ts_models_ls$test_1L_int)
         new_data_tsb <- new_data_tsb %>%
           dplyr::filter(!!rlang::sym(index_1L_chr) %in% test_dtm)
-        # tail(ts_models_ls$test_1L_int)
       }
     }else{
       new_data_tsb <- data_xx
@@ -257,62 +262,7 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
   ts_models_ls$fabels_ls <- ts_models_ls$mabels_ls %>% purrr::map2(names(ts_models_ls$mabels_ls),
                                                                    ~.x %>% fabletools::forecast(h = periods_1L_int, new_data = new_data_tsb)) %>%
     stats::setNames(names(ts_models_ls$mabels_ls))
-  # ts_models_ls <- append(ts_models_ls, list(fabels_ls = fabels_ls))
   return(ts_models_ls)
-}
-add_period <- function(data_xx,
-                       period_ctg_1L_chr = "Temporal",
-                       period_var_1L_chr = "Period",
-                       tenure_var_1L_chr = "Tenure"){
-  X_Ready4useDyad <- transform_data_fmt(data_xx,
-                                        type_1L_chr = "input")
-  X_Ready4useDyad <- renewSlot(X_Ready4useDyad,"ds_tb",
-                               X_Ready4useDyad@ds_tb %>%
-                                 dplyr::mutate(!!rlang::sym(period_var_1L_chr) := purrr::map_int(!!rlang::sym(tenure_var_1L_chr), ~max(ceiling(.),1))))
-  X_Ready4useDyad <- X_Ready4useDyad %>%
-    ready4use::add_dictionary(new_cases_r3 = ready4use_dictionary() %>%
-                                ready4use::renew.ready4use_dictionary(var_nm_chr = period_var_1L_chr,
-                                                                      var_ctg_chr = period_ctg_1L_chr,
-                                                                      var_desc_chr = period_var_1L_chr,
-                                                                      var_type_chr = "character"))
-  data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
-  return(data_xx)
-}
-add_sampled_imputations <- function(data_xx,
-                                    groupings_chr,
-                                    exclude_chr = character(0),
-                                    minimum_1L_int = 10L){
-  if(inherits(data_xx,"Ready4useDyad")){
-    X_Ready4useDyad <- data_xx
-  }else{
-    X_Ready4useDyad <- ready4use::Ready4useDyad(ds_tb = data_xx)
-  }
-  #groupings_chr <- c("Sex", "Age", "Role", "Aesthetic", "Individual", "Winter")
-  #exclude_chr <- c("Categorisation", "Severity")
-  #groupings_chr <- c("Sex", "Age", "Role", "Referrer", "Active", "Aesthetic")
-  #groupings_chr <- c("Sex", "Age", "Role", "Referrer", "Para", "Aesthetic")
-  #exclude_chr <- c("Categorisation", "Severity", "Individual", "Winter")
-  roll_backs_ls <- make_roll_backs_ls(X_Ready4useDyad, groupings_chr = groupings_chr, exclude_chr = exclude_chr,  minimum_1L_int = minimum_1L_int)
-  main_lup <- roll_backs_ls$main_lup
-  roll_backs_ls <- roll_backs_ls %>% purrr::discard_at("main_lup")
-  if(!identical(roll_backs_ls %>% unname(), list())){
-    X_Ready4useDyad@ds_tb <- names(roll_backs_ls)[1] %>%
-      purrr::reduce(.init = X_Ready4useDyad@ds_tb,
-                    ~ {
-                      frequencies_lup <- purrr::pluck(roll_backs_ls, .y)
-                      frequencies_lup <- frequencies_lup %>%
-                        dplyr::rename(Frequency_Tables_ls = !!rlang::sym(.y))
-                      missing_1L_xx <- .x %>% dplyr::pull(!!rlang::sym(.y)) %>% purrr::keep(is.na) %>% purrr::pluck(1) #ifelse("logical" %in% (.x %>% dplyr::pull(!!rlang::sym(.y)) %>% class()), NA, NA_character_)#
-                      .x %>%
-                        dplyr::left_join(frequencies_lup) %>% ####PICKUPHERE##
-                        dplyr::group_by(!!!rlang::syms(setdiff(names(frequencies_lup), "Frequency_Tables_ls"))) %>%
-                        dplyr::mutate(!!rlang::sym(.y) := dplyr::case_when(is.na(!!rlang::sym(.y)) ~ dplyr::first(Frequency_Tables_ls) %>% make_sampled_values(draws_int = dplyr::n(), fail_with_xx = missing_1L_xx),
-                                                                           TRUE ~ !!rlang::sym(.y))) %>%
-                        dplyr::ungroup()
-                      #
-                    })
-
-  }
 }
 add_new_uid <- function(data_tb,
                         uid_vars_chr,
@@ -331,7 +281,7 @@ add_new_uid <- function(data_tb,
     test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>% dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na), uid_pfx_1L_chr)), msg = "Secondary identifier variable must not have same prefix as used for primary identifier")
     test_1L_lgl <- assertthat::assert_that(!identical(imputed_uid_pfx_chr, uid_pfx_1L_chr), msg = "Prefix for imputed identifiers must be the same as the prefix used for the primary identifier")
     uid_lup <- data_tb %>% dplyr::select(tidyselect::all_of(uid_vars_chr[1:2])) %>% tidyr::drop_na()
-    data_tb <- data_tb %>% #dplyr::select(tidyselect::all_of(uid_vars_chr[1:2])) %>% #dplyr::filter(is.na(!!rlang::sym(uid_vars_chr[1]))) %>%
+    data_tb <- data_tb %>%
       dplyr::mutate(!!rlang::sym(new_uid_var_1L_chr) := !!rlang::sym(uid_vars_chr[1]) %>%
                       purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]), ~ifelse(is.na(.x),
                                                                              ifelse(.y %in% (uid_lup %>% dplyr::pull(uid_vars_chr[2])),
@@ -368,6 +318,43 @@ add_new_uid <- function(data_tb,
   }
   return(data_tb)
 }
+add_period <- function(data_xx,
+                       period_ctg_1L_chr = "Temporal",
+                       period_var_1L_chr = "Period",
+                       tenure_var_1L_chr = "Tenure"){
+  X_Ready4useDyad <- transform_data_fmt(data_xx,
+                                        type_1L_chr = "input")
+  X_Ready4useDyad <- renewSlot(X_Ready4useDyad,"ds_tb",
+                               X_Ready4useDyad@ds_tb %>%
+                                 dplyr::mutate(!!rlang::sym(period_var_1L_chr) := purrr::map_int(!!rlang::sym(tenure_var_1L_chr), ~max(ceiling(.),1))))
+  X_Ready4useDyad <- X_Ready4useDyad %>%
+    ready4use::add_dictionary(new_cases_r3 = ready4use_dictionary() %>%
+                                ready4use::renew.ready4use_dictionary(var_nm_chr = period_var_1L_chr,
+                                                                      var_ctg_chr = period_ctg_1L_chr,
+                                                                      var_desc_chr = period_var_1L_chr,
+                                                                      var_type_chr = "character"))
+  data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
+  return(data_xx)
+}
+add_rebate_cap_scenario <- function(partial_tb,
+                                    base_case_tb = NULL,
+                                    data_tb,
+                                    filter_cdn_1L_chr = character(0),
+                                    scenario_1L_xx = NULL,
+                                    scenarios_xx = NULL,
+                                    uids_xx = NULL,
+                                    unit_1L_chr = "Appointments"){
+  params_ls <- make_rebate_cap_params(data_tb, appointments_1L_chr = unit_1L_chr, scenarios_xx = scenarios_xx, uids_xx = uids_xx)
+  index_1L_int <- which(scenarios_xx == scenario_1L_xx)
+  partial_tb <- partial_tb %>%
+    dplyr::mutate(!!rlang::sym(unit_1L_chr) := (params_ls$appointments_ratio_dbl[index_1L_int]  * !!rlang::sym(unit_1L_chr)) %>% round(0),
+                  !!rlang::sym(paste0(unit_1L_chr, " Copayment")) := params_ls$mean_copays_dbl[index_1L_int] %>% round(2),
+                  `Cancellation Copayment` =  params_ls$cancellation_copays_dbl[index_1L_int] %>% round(2),
+                  !!rlang::sym(paste0(unit_1L_chr, " Cost")) := params_ls$ratios_dbl[index_1L_int]*!!rlang::sym(paste0(unit_1L_chr, " Cost"))) %>%
+    dplyr::select(c(Scenario, !!rlang::sym(paste0(unit_1L_chr, " Copayment")), `Cancellation Copayment`, dplyr::everything()))
+  return(partial_tb)
+
+}
 add_retainers <- function(data_tb,
                           datasets_ls,
                           cost_var_1L_chr = "Retainer amount",
@@ -375,6 +362,43 @@ add_retainers <- function(data_tb,
   dplyr::full_join(data_tb, make_retainers(datasets_ls$retainer,
                                            cost_var_1L_chr = cost_var_1L_chr,
                                            date_var_1L_chr = date_var_1L_chr))
+}
+
+add_sampled_imputations <- function(data_xx,
+                                    groupings_chr,
+                                    exclude_chr = character(0),
+                                    minimum_1L_int = 10L){
+  if(inherits(data_xx,"Ready4useDyad")){
+    X_Ready4useDyad <- data_xx
+  }else{
+    X_Ready4useDyad <- ready4use::Ready4useDyad(ds_tb = data_xx)
+  }
+  #groupings_chr <- c("Sex", "Age", "Role", "Aesthetic", "Individual", "Winter")
+  #exclude_chr <- c("Categorisation", "Severity")
+  #groupings_chr <- c("Sex", "Age", "Role", "Referrer", "Active", "Aesthetic")
+  #groupings_chr <- c("Sex", "Age", "Role", "Referrer", "Para", "Aesthetic")
+  #exclude_chr <- c("Categorisation", "Severity", "Individual", "Winter")
+  roll_backs_ls <- make_roll_backs_ls(X_Ready4useDyad, groupings_chr = groupings_chr, exclude_chr = exclude_chr,  minimum_1L_int = minimum_1L_int)
+  main_lup <- roll_backs_ls$main_lup
+  roll_backs_ls <- roll_backs_ls %>% purrr::discard_at("main_lup")
+  if(!identical(roll_backs_ls %>% unname(), list())){
+    X_Ready4useDyad@ds_tb <- names(roll_backs_ls)[1] %>%
+      purrr::reduce(.init = X_Ready4useDyad@ds_tb,
+                    ~ {
+                      frequencies_lup <- purrr::pluck(roll_backs_ls, .y)
+                      frequencies_lup <- frequencies_lup %>%
+                        dplyr::rename(Frequency_Tables_ls = !!rlang::sym(.y))
+                      missing_1L_xx <- .x %>% dplyr::pull(!!rlang::sym(.y)) %>% purrr::keep(is.na) %>% purrr::pluck(1) #ifelse("logical" %in% (.x %>% dplyr::pull(!!rlang::sym(.y)) %>% class()), NA, NA_character_)#
+                      .x %>%
+                        dplyr::left_join(frequencies_lup) %>% ####PICKUPHERE##
+                        dplyr::group_by(!!!rlang::syms(setdiff(names(frequencies_lup), "Frequency_Tables_ls"))) %>%
+                        dplyr::mutate(!!rlang::sym(.y) := dplyr::case_when(is.na(!!rlang::sym(.y)) ~ dplyr::first(Frequency_Tables_ls) %>% make_sampled_values(draws_int = dplyr::n(), fail_with_xx = missing_1L_xx),
+                                                                           TRUE ~ !!rlang::sym(.y))) %>%
+                        dplyr::ungroup()
+                      #
+                    })
+
+  }
 }
 add_sampled_records <- function(ds_tb,
                                 seed_lup,
@@ -400,6 +424,12 @@ add_sampled_variable <- function(clients_tb,
   clients_tb <- add_sampled_records(clients_tb, seed_lup = seed_lup, uid_var_nm_1L_chr = uid_var_nm_1L_chr)
   return(clients_tb)
 }
+add_scenario_activity_cost <- function(partial_tb,
+                                       base_case_tb,
+                                       unit_1L_chr = "Appointments"){
+  partial_tb <- partial_tb %>% dplyr::mutate(!!rlang::sym(paste0(unit_1L_chr, " Cost")) := !!rlang::sym(unit_1L_chr) * (!!rlang::sym(paste0(unit_1L_chr, " Cost"))/(base_case_tb %>% dplyr::pull(!!rlang::sym(unit_1L_chr)))))
+  return(partial_tb)
+}
 add_shorthand_to_caption <- function(caption_1L_chr = "",
                                      data_tsb = NULL,
                                      min_1L_int = 3L,
@@ -419,15 +449,6 @@ add_temporal_vars <- function(data_tb,
   data_tb <- temporal_vars_chr %>% purrr::reduce(.init = data_tb,
                                                  ~{
                                                    date_tfmn_fn <- get_temporal_fn(.y)
-                                                   # list(Day = function(x){format(x,"%d-%b-%y") %>% as.Date("%d-%b-%y")}, Week = tsibble::yearweek, Month = tsibble::yearmonth, Quarter = tsibble::yearquarter, Year = lubridate::year,
-                                                   #                    FiscalYQ = function(x, y = fiscal_start_1L_int){tsibble::yearquarter(x, fiscal_start = y)},
-                                                   #                    FiscalYear = function(x, y = fiscal_start_1L_int){
-                                                   #                      lubridate::quarter(x, fiscal_start = y, with_year = T) %>%
-                                                   #                        stringr::str_sub(start = 1, end = 4) %>% as.numeric() %>%
-                                                   #                        purrr::map_chr(~ifelse(y == 1, as.character(.x), paste0(as.character(.x-1),"-",as.character(.x))))},
-                                                   #                    FiscalQuarter = function(x, y = fiscal_start_1L_int){lubridate::quarter(x, fiscal_start = y)},
-                                                   #                    Weekday = weekdays) %>%
-                                                   # purrr::pluck(.y)
                                                    .x %>%
                                                      dplyr::mutate(!!rlang::sym(.y) := date_tfmn_fn(!!rlang::sym(date_var_1L_chr)))
                                                  })

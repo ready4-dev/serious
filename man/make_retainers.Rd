@@ -19,9 +19,11 @@ make_retainers(
   fiscal_start_1L_int = 7L,
   index_1L_chr = "Date",
   offset_1L_int = integer(0),
+  price_indices_dbl = numeric(0),
+  price_ref_1L_int = 1L,
   provider_id_1L_chr = "ProviderID",
-  reset_new_1L_lgl = TRUE,
   start_date_dtm = NULL,
+  time_var_1L_chr = "FiscalYear",
   unit_1L_chr = "days"
 )
 }
@@ -54,11 +56,15 @@ make_retainers(
 
 \item{offset_1L_int}{Offset (an integer vector of length one), Default: integer(0)}
 
+\item{price_indices_dbl}{Price indices (a double vector), Default: numeric(0)}
+
+\item{price_ref_1L_int}{Price reference (an integer vector of length one), Default: 1}
+
 \item{provider_id_1L_chr}{Provider identity (a character vector of length one), Default: 'ProviderID'}
 
-\item{reset_new_1L_lgl}{Reset new (a logical vector of length one), Default: TRUE}
-
 \item{start_date_dtm}{Start date (a date vector), Default: NULL}
+
+\item{time_var_1L_chr}{Time variable (a character vector of length one), Default: 'FiscalYear'}
 
 \item{unit_1L_chr}{Unit (a character vector of length one), Default: 'days'}
 }

@@ -1,3 +1,20 @@
+update_for_price_year <- function(data_tb,
+                                  cost_current_1L_chr = "Cost",
+                                  cost_constant_1L_chr = "Cost",
+                                  price_indices_dbl = numeric(0),
+                                  price_ref_1L_int = 1L,
+                                  time_var_1L_chr = "FiscalYear"){
+  if(!identical(price_indices_dbl, numeric(0))){
+    multipliers_dbl <- purrr::map_dbl(price_indices_dbl, ~.x/price_indices_dbl[price_ref_1L_int])
+    multipliers_tb <- tibble::tibble(PriceYearMultiplier = multipliers_dbl,
+                                     !!rlang::sym(time_var_1L_chr) := names(price_indices_dbl))
+    data_tb <- data_tb %>% dplyr::left_join(multipliers_tb)
+    data_tb <- data_tb %>%
+      dplyr::mutate(!!rlang::sym(cost_constant_1L_chr) := !!rlang::sym(cost_constant_1L_chr)*PriceYearMultiplier) %>%
+      dplyr::select(-PriceYearMultiplier)
+  }
+  return(data_tb)
+}
 update_medicare_data <- function(medicare_tb,
                                  measures_chr = character(0),
                                  years_chr = character(0)){
@@ -27,25 +44,110 @@ update_medicare_data <- function(medicare_tb,
   }
   return(medicare_tb)
 }
-update_retainers_ds <- function(retainers_tb,
-                                cost_var_1L_chr = "Retainer amount",
-                                date_var_1L_chr = "Retainer date",
-                                end_date_dtm = NULL){
-  retainers_tb <- retainers_tb %>%
-    dplyr::mutate(Clinicians = 1) %>%
-    add_cyclic_cases(date_var_1L_chr = date_var_1L_chr, arrange_by_1L_chr = date_var_1L_chr, new_zeros_chr = "Clinicians", end_date_dtm = end_date_dtm) %>%
+update_retainers_ds <- function (retainers_tb,
+                                 cost_var_1L_chr = "Retainer amount",
+                                 date_var_1L_chr = "Retainer date",
+                                 end_date_dtm = NULL,
+                                 price_indices_dbl = numeric(0),
+                                 price_ref_1L_int = 1L,
+                                 time_var_1L_chr = "FiscalYear")
+{
+  retainers_tb <- retainers_tb %>% dplyr::mutate(Clinicians = 1) %>%
+    add_cyclic_cases(date_var_1L_chr = date_var_1L_chr, arrange_by_1L_chr = date_var_1L_chr,
+                     new_zeros_chr = "Clinicians", end_date_dtm = end_date_dtm)  %>%
+    add_temporal_vars(date_var_1L_chr = date_var_1L_chr) %>%
+    update_for_price_year(cost_current_1L_chr = cost_var_1L_chr,
+                          cost_constant_1L_chr = cost_var_1L_chr,
+                          price_indices_dbl = price_indices_dbl,
+                          price_ref_1L_int = price_ref_1L_int,
+                          time_var_1L_chr = time_var_1L_chr) %>%
     dplyr::mutate(CumulativeRetainer = cumsum(!!rlang::sym(cost_var_1L_chr)),
                   CumulativeClinicians = cumsum(Clinicians)) %>%
-    add_temporal_vars(date_var_1L_chr = date_var_1L_chr) %>%
-    dplyr::mutate(Date = Day) %>%
-    dplyr::select(Date, dplyr::everything())
-  if(date_var_1L_chr!= "Date"){
-    retainers_tb <- retainers_tb %>%
-      dplyr::select(-!!rlang::sym(date_var_1L_chr))
+    dplyr::mutate(Date = Day) %>% dplyr::select(tidyr::all_of(c("Date",names(retainers_tb), "Clinicians", "CumulativeRetainer", "CumulativeClinicians")), dplyr::everything())
+  if (date_var_1L_chr != "Date") {
+    retainers_tb <- retainers_tb %>% dplyr::select(-!!rlang::sym(date_var_1L_chr))
   }
-  retainers_tb <- retainers_tb %>%
-    dplyr::rename(Retainer = !!rlang::sym(cost_var_1L_chr))
+  retainers_tb <- retainers_tb %>% dplyr::rename(Retainer = !!rlang::sym(cost_var_1L_chr))
   return(retainers_tb)
+}
+update_scenarios_tb <- function(scenarios_tb,
+                                base_case_1L_chr = "Base case",
+                                base_case_tb = NULL,
+                                change_var_1L_chr = "Total Cost",
+                                missing_1L_xx = NULL,
+                                difference_1L_int = 1L,
+                                outcomes_chr = "Budget Impact",
+                                scenario_1L_chr = "Scenario",
+                                tfmn_fn = NULL){
+  if(!is.null(base_case_tb)){
+    scenarios_tb <- dplyr::bind_rows(base_case_tb, scenarios_tb) %>%
+      dplyr::mutate(!!rlang::sym(outcomes_chr[difference_1L_int]) := !!rlang::sym(change_var_1L_chr) - base_case_tb %>% dplyr::pull(!!rlang::sym(change_var_1L_chr)))
+    extra_vars_chr <- outcomes_chr[-difference_1L_int]
+    if(!identical(extra_vars_chr, character(0)) & !is.null(missing_1L_xx)){
+      scenarios_tb <- extra_vars_chr %>% purrr::reduce(.init = scenarios_tb,
+                                                       ~ .x %>% dplyr::mutate(!!rlang::sym(.y) := dplyr::case_when(( .x %>% dplyr::pull(!!rlang::sym(scenario_1L_chr)) %>% purrr::map_lgl(~.x =="Base case")) & is.na(!!rlang::sym(.y)) ~ missing_1L_xx,
+                                                                                                                   T ~ !!rlang::sym(.y))))
+    }
+  }
+  if(!is.null(tfmn_fn)){
+    scenarios_tb <- scenarios_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~ tfmn_fn(.x)))
+  }
+  scenarios_tb <- scenarios_tb %>%
+    dplyr::select(tidyr::any_of(c(scenario_1L_chr, outcomes_chr)))
+  return(scenarios_tb)
+}
+update_start_end_date <- function(end_dtm,
+                                  start_dtm,
+                                  index_day_1L_chr = "01",
+                                  index_month_1L_chr = "07"){
+  end_1L_chr <- end_dtm %>% as.character()
+  start_1L_chr <- start_dtm %>% as.character()
+  index_end_1L_chr <- end_1L_chr
+  index_start_1L_chr <- start_1L_chr
+  if(!is.na(index_day_1L_chr)){
+    index_start_1L_chr <-  paste0(stringr::str_sub(index_start_1L_chr, end=8), index_day_1L_chr)
+  }
+  if(!is.na(index_month_1L_chr)){
+    index_start_1L_chr <- paste0(stringr::str_sub(index_start_1L_chr, end=5), index_month_1L_chr, stringr::str_sub(index_start_1L_chr, start=8))
+  }
+  index_start_dtm <- as.POSIXct(index_start_1L_chr, tz = start_dtm %>% attr("tzone"))
+  if(index_start_dtm > start_dtm ){
+    index_year_1L_chr <- index_start_dtm %>% lubridate::year() -1
+    index_start_1L_chr <- paste0(index_year_1L_chr, stringr::str_sub(index_start_1L_chr, start=5))
+    index_start_dtm <- as.POSIXct(index_start_1L_chr, tz = start_dtm %>% attr("tzone"))
+  }
+  start_dtm <- index_start_dtm
+  index_end_dtm <- start_dtm - lubridate::days(1)
+  index_end_1L_chr <- index_end_dtm %>% as.character()
+  index_end_1L_chr <- paste0(end_dtm %>% lubridate::year(),stringr::str_sub(index_end_1L_chr, start=5))
+  index_end_dtm <- as.POSIXct(index_end_1L_chr, tz = end_dtm %>% attr("tzone"))
+  if(index_end_dtm < end_dtm){
+    index_year_1L_chr <- index_end_dtm %>% lubridate::year() + 1
+    index_end_1L_chr <- paste0(index_year_1L_chr, stringr::str_sub(index_end_1L_chr, start=5))
+    index_end_dtm <- as.POSIXct(index_end_1L_chr, tz = end_dtm %>% attr("tzone"))
+  }
+  end_dtm <- index_end_dtm
+  new_dates_ls <- list(start = start_dtm,
+                       end = end_dtm)
+  return(new_dates_ls)
+}
+update_temporal_vars <- function(frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal"),
+                                 temporal_vars_chr = make_temporal_vars()){
+  frequency_1L_chr <- match.arg(frequency_1L_chr)
+  date_var_1L_chr <- get_new_index(frequency_1L_chr)
+  if("Weekday" %in% temporal_vars_chr){
+    weekday_1L_chr <- "Weekday"
+    temporal_vars_chr <- setdiff(temporal_vars_chr, "Weekday")
+  }else{
+    weekday_1L_chr <- character(0)
+  }
+  if(date_var_1L_chr %in% temporal_vars_chr){
+    temporal_vars_chr <- temporal_vars_chr[which(temporal_vars_chr==date_var_1L_chr):length(temporal_vars_chr)]
+  }
+  if("Day" %in% temporal_vars_chr){
+    temporal_vars_chr <- c(weekday_1L_chr,temporal_vars_chr)
+  }
+  return(temporal_vars_chr)
 }
 update_to_full_tenure <- function(data_tb,
                                   date_var_1L_chr = "Date",
@@ -67,7 +169,6 @@ update_to_full_tenure <- function(data_tb,
   }else{
     derived_1L_chr <- character(0)
   }
-  #end_penultimate_dtm <- end_date_dtm - lubridate::duration(1, units = unit_1L_chr)
   data_tb <- data_tb %>%
     dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>%
     dplyr::mutate(Last_Period_lgl = !!rlang::sym(tenure_var_1L_chr) >= max(floor(!!rlang::sym(tenure_var_1L_chr))))
@@ -86,7 +187,6 @@ update_to_full_tenure <- function(data_tb,
     dplyr::left_join(summary_lup)
   data_tb <- data_tb %>%
     dplyr::mutate(After_Start_Cut_Off_lgl = !!rlang::sym(date_var_1L_chr) >= Cut_Off_dtm) %>%
-    #dplyr::mutate(Censored_lgl = !!rlang::sym(date_var_1L_chr) >= end_penultimate_dtm) %>%
     dplyr::mutate(Drop_lgl = purrr::map2_lgl(After_Start_Cut_Off_lgl, End_This_Cycle_dtm, ~.x & (.y > end_date_dtm))) %>%
     dplyr::ungroup() %>%
     dplyr::filter(!Drop_lgl)
@@ -113,13 +213,6 @@ update_with_imputed <- function(data_xx,
                     .x %>%
                       dplyr::mutate(dplyr::across(variables_chr, ~ dplyr::case_when(is.na(.)  ~ "BATMAN",
                                                                                     TRUE ~ .)))
-                    # variables_chr %>%
-                    #   purrr::reduce(.init = .x,
-                    #                 ~ {
-                    #                   dplyr::mutate(.x, !!rlang::sym(.y) = case_when())
-                    #
-                    #
-                    #                 })
                   })
 
   if(inherits(data_xx,"Ready4useDyad")){

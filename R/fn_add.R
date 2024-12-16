@@ -1,3 +1,31 @@
+#' Add clinical assessment scenario
+#' @description add_clinical_ax_scenario() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add clinical assessment scenario. The function returns Partial (a tibble).
+#' @param partial_tb Partial (a tibble)
+#' @param base_case_tb Base case (a tibble)
+#' @param data_tb Data (a tibble)
+#' @param filter_cdn_1L_chr Filter condition (a character vector of length one)
+#' @param scenario_1L_xx Scenario length one (an output object of multiple potential types), Default: NULL
+#' @param scenarios_xx Scenarios (an output object of multiple potential types), Default: NULL
+#' @param uids_xx Unique identifiers (an output object of multiple potential types), Default: NULL
+#' @param unit_1L_chr Unit (a character vector of length one), Default: 'Appointments'
+#' @return Partial (a tibble)
+#' @rdname add_clinical_ax_scenario
+#' @export 
+#' @importFrom dplyr filter mutate pull
+#' @importFrom rlang sym
+#' @keywords internal
+add_clinical_ax_scenario <- function (partial_tb, base_case_tb, data_tb, filter_cdn_1L_chr, 
+    scenario_1L_xx = NULL, scenarios_xx = NULL, uids_xx = NULL, 
+    unit_1L_chr = "Appointments") 
+{
+    new_tb <- data_tb %>% dplyr::filter(eval(parse(text = filter_cdn_1L_chr)))
+    partial_tb <- partial_tb %>% dplyr::mutate(`:=`(!!rlang::sym(unit_1L_chr), 
+        sum(new_tb %>% dplyr::pull(!!rlang::sym(unit_1L_chr)))/sum(data_tb %>% 
+            dplyr::pull(!!rlang::sym(unit_1L_chr))) * !!rlang::sym(unit_1L_chr) + 
+            1 * (nrow(data_tb) - nrow(new_tb)))) %>% add_scenario_activity_cost(base_case_tb = base_case_tb, 
+        unit_1L_chr = unit_1L_chr)
+    return(partial_tb)
+}
 #' Add cumulatives
 #' @description add_cumulatives() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add cumulatives. The function returns Data (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
@@ -500,6 +528,40 @@ add_period <- function (data_xx, period_ctg_1L_chr = "Temporal", period_var_1L_c
     data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
     return(data_xx)
 }
+#' Add rebate cap scenario
+#' @description add_rebate_cap_scenario() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add rebate cap scenario. The function returns Partial (a tibble).
+#' @param partial_tb Partial (a tibble)
+#' @param base_case_tb Base case (a tibble), Default: NULL
+#' @param data_tb Data (a tibble)
+#' @param filter_cdn_1L_chr Filter condition (a character vector of length one), Default: character(0)
+#' @param scenario_1L_xx Scenario length one (an output object of multiple potential types), Default: NULL
+#' @param scenarios_xx Scenarios (an output object of multiple potential types), Default: NULL
+#' @param uids_xx Unique identifiers (an output object of multiple potential types), Default: NULL
+#' @param unit_1L_chr Unit (a character vector of length one), Default: 'Appointments'
+#' @return Partial (a tibble)
+#' @rdname add_rebate_cap_scenario
+#' @export 
+#' @importFrom dplyr mutate select everything
+#' @importFrom rlang sym
+#' @keywords internal
+add_rebate_cap_scenario <- function (partial_tb, base_case_tb = NULL, data_tb, filter_cdn_1L_chr = character(0), 
+    scenario_1L_xx = NULL, scenarios_xx = NULL, uids_xx = NULL, 
+    unit_1L_chr = "Appointments") 
+{
+    params_ls <- make_rebate_cap_params(data_tb, appointments_1L_chr = unit_1L_chr, 
+        scenarios_xx = scenarios_xx, uids_xx = uids_xx)
+    index_1L_int <- which(scenarios_xx == scenario_1L_xx)
+    partial_tb <- partial_tb %>% dplyr::mutate(`:=`(!!rlang::sym(unit_1L_chr), 
+        (params_ls$appointments_ratio_dbl[index_1L_int] * !!rlang::sym(unit_1L_chr)) %>% 
+            round(0)), `:=`(!!rlang::sym(paste0(unit_1L_chr, 
+        " Copayment")), params_ls$mean_copays_dbl[index_1L_int] %>% 
+        round(2)), `Cancellation Copayment` = params_ls$cancellation_copays_dbl[index_1L_int] %>% 
+        round(2), `:=`(!!rlang::sym(paste0(unit_1L_chr, " Cost")), 
+        params_ls$ratios_dbl[index_1L_int] * !!rlang::sym(paste0(unit_1L_chr, 
+            " Cost")))) %>% dplyr::select(c(Scenario, !!rlang::sym(paste0(unit_1L_chr, 
+        " Copayment")), `Cancellation Copayment`, dplyr::everything()))
+    return(partial_tb)
+}
 #' Add retainers
 #' @description add_retainers() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add retainers. The function is called for its side effects and does not return a value.
 #' @param data_tb Data (a tibble)
@@ -605,6 +667,24 @@ add_sampled_variable <- function (clients_tb, seed_ds_tb, shares_dbl, prefix_1L_
     clients_tb <- add_sampled_records(clients_tb, seed_lup = seed_lup, 
         uid_var_nm_1L_chr = uid_var_nm_1L_chr)
     return(clients_tb)
+}
+#' Add scenario activity cost
+#' @description add_scenario_activity_cost() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add scenario activity cost. The function returns Partial (a tibble).
+#' @param partial_tb Partial (a tibble)
+#' @param base_case_tb Base case (a tibble)
+#' @param unit_1L_chr Unit (a character vector of length one), Default: 'Appointments'
+#' @return Partial (a tibble)
+#' @rdname add_scenario_activity_cost
+#' @export 
+#' @importFrom dplyr mutate pull
+#' @importFrom rlang sym
+#' @keywords internal
+add_scenario_activity_cost <- function (partial_tb, base_case_tb, unit_1L_chr = "Appointments") 
+{
+    partial_tb <- partial_tb %>% dplyr::mutate(`:=`(!!rlang::sym(paste0(unit_1L_chr, 
+        " Cost")), !!rlang::sym(unit_1L_chr) * (!!rlang::sym(paste0(unit_1L_chr, 
+        " Cost"))/(base_case_tb %>% dplyr::pull(!!rlang::sym(unit_1L_chr))))))
+    return(partial_tb)
 }
 #' Add shorthand to caption
 #' @description add_shorthand_to_caption() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add shorthand to caption. The function returns Caption (a character vector of length one).

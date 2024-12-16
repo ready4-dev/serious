@@ -16,9 +16,9 @@ x <- ready4fun::make_pkg_desc_ls(pkg_title_1L_chr = "Develop, Test and Apply Tim
                                  urls_chr = c("https://ready4-dev.github.io/serious/",
                                               "https://github.com/ready4-dev/serious",
                                               "https://ready4-dev.github.io/ready4/")) %>%
-  ready4fun::make_manifest(addl_pkgs_ls = ready4fun::make_addl_pkgs_ls(suggests_chr = c("knitr","knitrBootstrap","rmarkdown")#,
+  ready4fun::make_manifest(addl_pkgs_ls = ready4fun::make_addl_pkgs_ls(suggests_chr = c("knitr","knitrBootstrap","rmarkdown"),
                                                                        #imports_chr = c(),
-                                                                       #depends_chr = c()
+                                                                       depends_chr = c("ready4")
   ),
   build_ignore_ls = ready4fun::make_build_ignore_ls(file_nms_chr = c("initial_setup.R")),
   check_type_1L_chr = "ready4",
