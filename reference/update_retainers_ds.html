@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">serious</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9005</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9006</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,7 +42,10 @@
 <span>  <span class="va">retainers_tb</span>,</span>
 <span>  cost_var_1L_chr <span class="op">=</span> <span class="st">"Retainer amount"</span>,</span>
 <span>  date_var_1L_chr <span class="op">=</span> <span class="st">"Retainer date"</span>,</span>
-<span>  end_date_dtm <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  end_date_dtm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  price_indices_dbl <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  price_ref_1L_int <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  time_var_1L_chr <span class="op">=</span> <span class="st">"FiscalYear"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -64,6 +67,18 @@
 
 <dt id="arg-end-date-dtm">end_date_dtm<a class="anchor" aria-label="anchor" href="#arg-end-date-dtm"></a></dt>
 <dd><p>End date (a date vector), Default: NULL</p></dd>
+
+
+<dt id="arg-price-indices-dbl">price_indices_dbl<a class="anchor" aria-label="anchor" href="#arg-price-indices-dbl"></a></dt>
+<dd><p>Price indices (a double vector), Default: numeric(0)</p></dd>
+
+
+<dt id="arg-price-ref-l-int">price_ref_1L_int<a class="anchor" aria-label="anchor" href="#arg-price-ref-l-int"></a></dt>
+<dd><p>Price reference (an integer vector of length one), Default: 1</p></dd>
+
+
+<dt id="arg-time-var-l-chr">time_var_1L_chr<a class="anchor" aria-label="anchor" href="#arg-time-var-l-chr"></a></dt>
+<dd><p>Time variable (a character vector of length one), Default: 'FiscalYear'</p></dd>
 
 </dl></div>
     <div class="section level2">
