@@ -171,19 +171,19 @@ make_erp_ds <- function(erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
   }
   return(erp_xx)
 }
-make_forecast_cost_tb <- function(fabels_ls,
-                                  unit_cost_1L_dbl,
-                                  fixed_cost_1L_dbl = 0,#total_cost_tb$`Retainers Cost`[3]
-                                  what_1L_chr = "Appointments"){
-  forecast_mean_tb <- make_forecasts_tb(fabels_ls, tfmn_args_ls = list(y= unit_cost_1L_dbl), tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both")
-  forecast_cost_tb <- forecast_mean_tb %>%
-    # dplyr::select(dplyr::starts_with("Cost")) %>%
-    dplyr::mutate(dplyr::across(dplyr::starts_with("Cost"), ~.x + fixed_cost_1L_dbl, .names = "Total{.col}"))
-  forecast_cost_tb <- forecast_cost_tb %>% tidyr::pivot_longer(cols = names(forecast_cost_tb), names_to = "Parameter") %>%
-    dplyr::mutate(Statistic = Parameter  %>% stringr::str_remove("TotalCost_") %>% stringr::str_remove("Cost_") %>% stringr::str_replace_all("_"," ") %>%
-                    stringr::str_replace_all(".mean", "Mean")) %>% dplyr::mutate(Parameter = dplyr::case_when(startsWith(Parameter, "Cost") ~ paste0(what_1L_chr," Costs"),
-                                                                                                              startsWith(Parameter, "Total") ~ "Total Cost",
-                                                                                                              T ~ what_1L_chr)) %>%
+make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_dbl = 0,
+                                   what_1L_chr = "Appointments") {
+  forecast_mean_tb <- make_forecasts_tb(fabels_ls, tfmn_args_ls = list(y = unit_cost_1L_dbl),
+                                        tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both")
+  forecast_cost_tb <- forecast_mean_tb %>% dplyr::mutate(dplyr::across(dplyr::starts_with("Cost"),
+                                                                       ~.x + fixed_cost_1L_dbl, .names = "Total{.col}"))
+  forecast_cost_tb <- forecast_cost_tb %>% tidyr::pivot_longer(cols = names(forecast_cost_tb),
+                                                               names_to = "Parameter") %>%
+    dplyr::mutate(Statistic = Parameter %>%
+                    stringr::str_remove("TotalCost_") %>% stringr::str_remove("Cost_") %>%
+                    stringr::str_replace_all("_", " ") %>% stringr::str_replace_all(".mean",
+                                                                                    "Mean")) %>% dplyr::mutate(Parameter = dplyr::case_when(startsWith(Parameter, "Cost") ~ paste0(what_1L_chr, " Cost"),
+                                                                                                                                            startsWith(Parameter, "Total") ~ "Total Cost", T ~ what_1L_chr)) %>%
     tidyr::pivot_wider(names_from = "Statistic", values_from = "value")
   return(forecast_cost_tb)
 }

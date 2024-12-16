@@ -279,7 +279,7 @@ make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_db
         stringr::str_remove("TotalCost_") %>% stringr::str_remove("Cost_") %>% 
         stringr::str_replace_all("_", " ") %>% stringr::str_replace_all(".mean", 
         "Mean")) %>% dplyr::mutate(Parameter = dplyr::case_when(startsWith(Parameter, 
-        "Cost") ~ paste0(what_1L_chr, " Costs"), startsWith(Parameter, 
+        "Cost") ~ paste0(what_1L_chr, " Cost"), startsWith(Parameter, 
         "Total") ~ "Total Cost", T ~ what_1L_chr)) %>% tidyr::pivot_wider(names_from = "Statistic", 
         values_from = "value")
     return(forecast_cost_tb)
