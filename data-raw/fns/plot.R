@@ -260,6 +260,31 @@ plot_residuals <- function(ts_models_ls = make_ts_models_ls(),
                            ...)
   return(residuals_plt)
 }
+plot_periods <- function(data_tb,
+                         colour_var_1L_chr,
+                         y_1L_chr,
+                         anonymous_1L_lgl = FALSE,
+                         colour_end_1L_chr = "#0e668b",
+                         end_1L_chr = "End",
+                         line_1L_int = 4,
+                         start_1L_chr = "Start",
+                         x_1L_chr = "Date"){
+  periods_plt <- data_tb %>%
+    ggplot2::ggplot(ggplot2::aes(x = !!rlang::sym(start_1L_chr),
+                                 xend = !!rlang::sym(end_1L_chr),
+                                 y = !!rlang::sym(y_1L_chr),
+                                 colour = !!rlang::sym(colour_var_1L_chr))) +
+    ggalt::geom_dumbbell(colour_xend = colour_end_1L_chr, linewidth = line_1L_int) +
+    ggplot2::xlab(x_1L_chr)
+  if(anonymous_1L_lgl){
+    periods_plt <- periods_plt +
+      ggplot2::theme(axis.title.y=ggplot2::element_blank(),
+                     axis.text.y=ggplot2::element_blank(),
+                     axis.ticks.y=ggplot2::element_blank(),
+                     legend.position = "none")
+  }
+  return(periods_plt)
+}
 plot_scatter <- function (data_xx, axis_labels_1L_chr = c("none", "show", "inner"),
                           caption_1L_chr = "", clinical_vars_chr = make_clinical_vars(),
                           frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly"),

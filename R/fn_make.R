@@ -20,6 +20,94 @@ make_age_bands_lup <- function (bands_chr, values_ls, fractions_ls = NULL, type_
     }
     return(age_bands_lup)
 }
+#' Make aggregates summary
+#' @description make_aggregates_summary() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make aggregates summary. The function returns Summary (a list).
+#' @param data_tb Data (a tibble)
+#' @param include_1L_chr Include (a character vector of length one)
+#' @param extras_chr Extras (a character vector), Default: character(0)
+#' @param select_chr Select (a character vector), Default: character(0)
+#' @param item_1L_chr Item (a character vector of length one), Default: 'Item'
+#' @param subdivision_1L_chr Subdivision (a character vector of length one), Default: c("Subdivision", "Discipline")
+#' @return Summary (a list)
+#' @rdname make_aggregates_summary
+#' @export 
+#' @importFrom purrr map pmap_lgl map2 map_vec
+#' @importFrom dplyr filter pull select mutate group_by summarise across arrange left_join distinct ungroup
+#' @importFrom rlang sym
+#' @importFrom stats setNames
+#' @importFrom tidyselect any_of
+#' @importFrom tidyr complete
+#' @importFrom lubridate interval ymd as.duration
+#' @importFrom stringr str_sub
+#' @keywords internal
+make_aggregates_summary <- function (data_tb, include_1L_chr, extras_chr = character(0), 
+    select_chr = character(0), item_1L_chr = "Item", subdivision_1L_chr = c("Subdivision", 
+        "Discipline")) 
+{
+    subdivision_1L_chr <- match.arg(subdivision_1L_chr)
+    select_chr <- c(include_1L_chr, select_chr) %>% unique()
+    categories_chr <- data_tb$Category %>% unique()
+    divisions_ls <- categories_chr %>% purrr::map(~{
+        category_1L_chr <- .x
+        subcategories_chr <- data_tb %>% dplyr::filter(Category == 
+            category_1L_chr) %>% dplyr::pull(Subcategory) %>% 
+            unique()
+        subdisions_ls <- subcategories_chr %>% purrr::map(~data_tb %>% 
+            dplyr::filter(Category == category_1L_chr, Subcategory == 
+                .x) %>% dplyr::pull(!!rlang::sym(subdivision_1L_chr)) %>% 
+            unique() %>% sort()) %>% stats::setNames(subcategories_chr)
+        subdisions_ls
+    }) %>% stats::setNames(categories_chr)
+    summary_tb <- data_tb %>% dplyr::select(tidyselect::any_of(c("UID", 
+        "Category", "Subcategory", subdivision_1L_chr, item_1L_chr, 
+        select_chr, extras_chr))) %>% tidyr::complete(UID, Category, 
+        Subcategory, !!rlang::sym(subdivision_1L_chr))
+    summary_tb <- summary_tb %>% dplyr::mutate(Allowed = purrr::pmap_lgl(., 
+        ~ifelse(!(..3 %in% names(divisions_ls[[..2]])), F, ifelse(!(..4 %in% 
+            divisions_ls[[..2]][[..3]]), F, T)))) %>% dplyr::filter(Allowed) %>% 
+        dplyr::select(-Allowed)
+    totals_tb <- summary_tb %>% dplyr::filter(!!rlang::sym(subdivision_1L_chr) == 
+        "Total")
+    summary_tb <- summary_tb %>% dplyr::filter(!!rlang::sym(subdivision_1L_chr) != 
+        "Total") %>% dplyr::group_by(UID, Category, Subcategory, 
+        !!rlang::sym(subdivision_1L_chr)) %>% dplyr::summarise(`:=`(!!rlang::sym(item_1L_chr), 
+        "Total"), dplyr::across(tidyselect::any_of(select_chr), 
+        ~sum(.x, na.rm = TRUE)))
+    summary_tb <- rbind(summary_tb, totals_tb) %>% dplyr::arrange(UID, 
+        Category, Subcategory, !!rlang::sym(subdivision_1L_chr), 
+        !!rlang::sym(item_1L_chr)) %>% dplyr::mutate(Included = !is.na(!!rlang::sym(include_1L_chr)))
+    summary_ls <- list(sudbivisions_tb = summary_tb)
+    totals_tb <- summary_tb %>% dplyr::filter(Subcategory == 
+        "Total") %>% dplyr::select(-c(!!rlang::sym(subdivision_1L_chr), 
+        Included))
+    summary_tb <- summary_tb %>% dplyr::filter(Subcategory != 
+        "Total") %>% dplyr::group_by(UID, Category, Subcategory) %>% 
+        dplyr::summarise(`:=`(!!rlang::sym(subdivision_1L_chr), 
+            "Total"), dplyr::across(tidyselect::any_of(select_chr), 
+            ~sum(.x, na.rm = TRUE)))
+    summary_tb <- rbind(summary_tb, totals_tb) %>% dplyr::arrange(UID, 
+        Category, Subcategory) %>% dplyr::mutate(Included = !is.na(!!rlang::sym(include_1L_chr)))
+    summary_ls$subcategories_tb <- summary_tb
+    summary_tb <- summary_tb %>% dplyr::group_by(UID, Category) %>% 
+        dplyr::summarise(Subcategory = "Total", dplyr::across(tidyselect::any_of(select_chr), 
+            ~sum(.x, na.rm = TRUE))) %>% dplyr::arrange(UID, 
+        Category) %>% dplyr::mutate(Included = !is.na(!!rlang::sym(include_1L_chr)))
+    summary_ls$Categories_tb <- summary_tb
+    summary_ls <- summary_ls %>% purrr::map(~dplyr::left_join(.x, 
+        data_tb %>% dplyr::select(UID, Program, Service, Provider, 
+            FirstEight, Year, Period, Start, End) %>% dplyr::distinct()) %>% 
+        dplyr::mutate(Date = purrr::map2(Start, End, ~{
+            interval_dtm <- lubridate::interval(lubridate::ymd(.x), 
+                lubridate::ymd(.y))
+            interval_dtm@start + lubridate::as.duration(interval_dtm)/2
+        }) %>% purrr::map_vec(~as.Date(.x))) %>% dplyr::mutate(Months = Period, 
+        Period = UID %>% stringr::str_sub(start = -11)) %>% dplyr::ungroup() %>% 
+        dplyr::select(tidyselect::any_of(c("UID", "Program", 
+            "Service", "Provider", "FirstEight", "Year", "Months", 
+            "Period", "Start", "End", "Date", "Category", "Subcategory", 
+            subdivision_1L_chr, item_1L_chr, select_chr, "Included"))))
+    return(summary_ls)
+}
 #' Make base case tibble
 #' @description make_base_case_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make base case tibble. The function returns Base case (a tibble).
 #' @param forecast_tb Forecast (a tibble)
@@ -157,6 +245,82 @@ make_date_tfmn_fn <- function (format_1L_chr = "%d-%b-%y")
     date_tfmn_fn <- eval(parse(text = paste0("function(x){format(x,\"", 
         format_1L_chr, "\") %>% as.Date(\"", format_1L_chr, "\")}")))
     return(date_tfmn_fn)
+}
+#' Make duplicate totals tibble
+#' @description make_duplicate_totals_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make duplicate totals tibble. The function returns Duplicate totals (a tibble).
+#' @param data_tb Data (a tibble)
+#' @param type_1L_chr Type (a character vector of length one), Default: c("Category", "Subcategory", "Subdivision", "Discipline")
+#' @return Duplicate totals (a tibble)
+#' @rdname make_duplicate_totals_tb
+#' @export 
+#' @importFrom dplyr group_by across summarise filter
+#' @importFrom tidyselect all_of
+#' @importFrom rlang sym
+#' @importFrom purrr map_lgl
+#' @keywords internal
+make_duplicate_totals_tb <- function (data_tb, type_1L_chr = c("Category", "Subcategory", 
+    "Subdivision", "Discipline")) 
+{
+    type_1L_chr <- match.arg(type_1L_chr)
+    groupings_chr <- c("Category", "Subcategory", ifelse(type_1L_chr == 
+        "Discipline", "Discipline", "Subdivision"))
+    pick_1L_int <- which(groupings_chr == type_1L_chr)
+    aggregate_at_1L_chr <- groupings_chr[pick_1L_int]
+    groupings_chr <- c("UID", groupings_chr[ifelse(pick_1L_int - 
+        1 > 0, 1, 0):(pick_1L_int - 1)])
+    duplicate_totals_tb <- data_tb %>% dplyr::group_by(dplyr::across(tidyselect::all_of(groupings_chr))) %>% 
+        dplyr::summarise(`:=`(!!rlang::sym(aggregate_at_1L_chr), 
+            list(!!rlang::sym(aggregate_at_1L_chr)))) %>% dplyr::filter(!!rlang::sym(aggregate_at_1L_chr) %>% 
+        purrr::map_lgl(~("Total" %in% .x) & length(.x) > 1))
+    return(duplicate_totals_tb)
+}
+#' Make duplicates list
+#' @description make_duplicates_ls() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make duplicates list. The function returns Duplicates (a list).
+#' @param data_tb Data (a tibble)
+#' @return Duplicates (a list)
+#' @rdname make_duplicates_ls
+#' @export 
+#' @importFrom dplyr pull filter
+#' @importFrom purrr map
+#' @importFrom stats setNames
+#' @keywords internal
+make_duplicates_ls <- function (data_tb) 
+{
+    categories_chr <- data_tb %>% dplyr::pull(Category) %>% unique() %>% 
+        sort()
+    duplicates_ls <- categories_chr %>% purrr::map(~{
+        category_1L_chr <- .x
+        subcategories_chr <- data_tb %>% dplyr::filter(Category == 
+            category_1L_chr) %>% dplyr::pull(Subcategory) %>% 
+            unique() %>% sort()
+        subcategories_chr %>% purrr::map(~make_duplicates_tb(data_tb, 
+            category_1L_chr = category_1L_chr, subcategory_1L_chr = .x)) %>% 
+            stats::setNames(subcategories_chr)
+    }) %>% stats::setNames(categories_chr)
+    return(duplicates_ls)
+}
+#' Make duplicates tibble
+#' @description make_duplicates_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make duplicates tibble. The function returns Duplicates (a tibble).
+#' @param data_tb Data (a tibble)
+#' @param category_1L_chr Category (a character vector of length one)
+#' @param subcategory_1L_chr Subcategory (a character vector of length one)
+#' @return Duplicates (a tibble)
+#' @rdname make_duplicates_tb
+#' @export 
+#' @importFrom dplyr filter pull arrange group_by mutate n ungroup
+#' @keywords internal
+make_duplicates_tb <- function (data_tb, category_1L_chr, subcategory_1L_chr) 
+{
+    ids_chr <- data_tb %>% dplyr::filter(Subcategory == subcategory_1L_chr) %>% 
+        dplyr::pull(UID) %>% unique()
+    duplicates_tb <- data_tb %>% dplyr::filter(UID %in% ids_chr & 
+        Category == category_1L_chr) %>% dplyr::arrange(UID)
+    duplicates_tb <- duplicates_tb %>% dplyr::group_by(UID, Subcategory) %>% 
+        dplyr::mutate(Count = dplyr::n()) %>% dplyr::ungroup() %>% 
+        dplyr::arrange(UID)
+    duplicates_tb <- duplicates_tb %>% dplyr::filter(Count > 
+        1)
+    return(duplicates_tb)
 }
 #' Make episodes variables
 #' @description make_episodes_vars() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make episodes variables. The function returns Episodes variables (an output object of multiple potential types).

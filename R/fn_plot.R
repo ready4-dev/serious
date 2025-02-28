@@ -293,6 +293,39 @@ plot_multiple <- function (tsibbles_xx, by_value_1L_lgl = F, caption_1L_chr = ""
         })
     }
 }
+#' Plot periods
+#' @description plot_periods() is a Plot function that plots data. Specifically, this function implements an algorithm to plot periods. The function returns Periods (a plot).
+#' @param data_tb Data (a tibble)
+#' @param colour_var_1L_chr Colour variable (a character vector of length one)
+#' @param y_1L_chr Y (a character vector of length one)
+#' @param anonymous_1L_lgl Anonymous (a logical vector of length one), Default: FALSE
+#' @param colour_end_1L_chr Colour end (a character vector of length one), Default: '#0e668b'
+#' @param end_1L_chr End (a character vector of length one), Default: 'End'
+#' @param line_1L_int Line (an integer vector of length one), Default: 4
+#' @param start_1L_chr Start (a character vector of length one), Default: 'Start'
+#' @param x_1L_chr X (a character vector of length one), Default: 'Date'
+#' @return Periods (a plot)
+#' @rdname plot_periods
+#' @export 
+#' @importFrom ggplot2 ggplot aes xlab theme element_blank
+#' @importFrom rlang sym
+#' @importFrom ggalt geom_dumbbell
+#' @keywords internal
+plot_periods <- function (data_tb, colour_var_1L_chr, y_1L_chr, anonymous_1L_lgl = FALSE, 
+    colour_end_1L_chr = "#0e668b", end_1L_chr = "End", line_1L_int = 4, 
+    start_1L_chr = "Start", x_1L_chr = "Date") 
+{
+    periods_plt <- data_tb %>% ggplot2::ggplot(ggplot2::aes(x = !!rlang::sym(start_1L_chr), 
+        xend = !!rlang::sym(end_1L_chr), y = !!rlang::sym(y_1L_chr), 
+        colour = !!rlang::sym(colour_var_1L_chr))) + ggalt::geom_dumbbell(colour_xend = colour_end_1L_chr, 
+        linewidth = line_1L_int) + ggplot2::xlab(x_1L_chr)
+    if (anonymous_1L_lgl) {
+        periods_plt <- periods_plt + ggplot2::theme(axis.title.y = ggplot2::element_blank(), 
+            axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank(), 
+            legend.position = "none")
+    }
+    return(periods_plt)
+}
 #' Plot residuals
 #' @description plot_residuals() is a Plot function that plots data. Specifically, this function implements an algorithm to plot residuals. The function returns Residuals (a plot).
 #' @param ts_models_ls Time series models (a list), Default: make_ts_models_ls()

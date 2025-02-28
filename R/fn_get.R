@@ -356,6 +356,63 @@ get_raw_erp_data <- function (uid_1L_chr = "ERP_Q", age_chr = as.character(1:115
             "Could not parse", "Unknown HTTP verb", "Gateway Timeout \\(HTTP 504\\)"))
     return(erp_raw_tb)
 }
+#' Get start end dates
+#' @description get_start_end_dates() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get start end dates. The function returns Date (a date vector).
+#' @param financial_yrs_chr Financial years (a character vector)
+#' @param months_chr Months (a character vector)
+#' @param multiple_pfx_1L_chr Multiple prefix (a character vector of length one), Default: 'FYS'
+#' @param yr_pfx_1L_chr Year prefix (a character vector of length one), Default: '20'
+#' @param yr_two_months_chr Year two months (a character vector), Default: c("Jan", "Feb", "Mar", "Apr", "May", "Jun")
+#' @param what_1L_chr What (a character vector of length one), Default: c("start", "end")
+#' @return Date (a date vector)
+#' @rdname get_start_end_dates
+#' @export 
+#' @importFrom purrr map2_chr
+#' @importFrom stringr str_split_1 str_sub
+#' @importFrom lubridate my floor_date ceiling_date days ymd
+#' @keywords internal
+get_start_end_dates <- function (financial_yrs_chr, months_chr, multiple_pfx_1L_chr = "FYS", 
+    yr_pfx_1L_chr = "20", yr_two_months_chr = c("Jan", "Feb", 
+        "Mar", "Apr", "May", "Jun"), what_1L_chr = c("start", 
+        "end")) 
+{
+    what_1L_chr <- match.arg(what_1L_chr)
+    date_dtm <- purrr::map2_chr(financial_yrs_chr, months_chr, 
+        ~{
+            if (is.na(multiple_pfx_1L_chr)) {
+                single_1L_lgl <- T
+            }
+            else {
+                single_1L_lgl <- !startsWith(.x, multiple_pfx_1L_chr)
+            }
+            start_end_months_chr <- .y %>% stringr::str_split_1("-")
+            if (single_1L_lgl) {
+                start_end_yrs_chr <- paste0(yr_pfx_1L_chr, .x %>% 
+                  stringr::str_sub(start = 3L) %>% stringr::str_split_1("-"))
+                month_years_chr <- start_end_yrs_chr %>% purrr::map2_chr(start_end_months_chr, 
+                  ~paste0(.y, "-", start_end_yrs_chr[ifelse(.y %in% 
+                    yr_two_months_ch, 2, 1)]))
+            }
+            else {
+                start_end_yrs_dbl <- paste0(yr_pfx_1L_chr, .x %>% 
+                  stringr::str_sub(start = 4L) %>% stringr::str_split_1("-")) %>% 
+                  as.numeric()
+                start_end_yrs_ls <- list(start_chr = c(start_end_yrs_dbl[1], 
+                  start_end_yrs_dbl[1] + 1) %>% as.character(), 
+                  end_chr = c(start_end_yrs_dbl[2] - 1, start_end_yrs_dbl[2]) %>% 
+                    as.character())
+                month_years_chr <- start_end_yrs_ls %>% purrr::map2_chr(start_end_months_chr, 
+                  ~paste0(.y, "-", .x[ifelse(.y %in% yr_two_months_ch, 
+                    2, 1)])) %>% unname()
+            }
+            ifelse(what_1L_chr == "start", month_years_chr[1] %>% 
+                lubridate::my() %>% lubridate::floor_date(unit = "months") %>% 
+                as.character(), (month_years_chr[2] %>% lubridate::my() %>% 
+                lubridate::ceiling_date(unit = "months") - lubridate::days(1)) %>% 
+                as.character())
+        }) %>% lubridate::ymd()
+    return(date_dtm)
+}
 #' Get temporal function
 #' @description get_temporal_fn() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get temporal function. The function returns Temporal (a function).
 #' @param period_1L_chr Period (a character vector of length one), Default: make_temporal_vars(index_1L_chr = "Sub")

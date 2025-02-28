@@ -13,6 +13,70 @@ make_age_bands_lup <- function(bands_chr,
   }
   return(age_bands_lup)
 }
+make_aggregates_summary <- function(data_tb,
+                                    include_1L_chr,
+                                    extras_chr = character(0),
+                                    select_chr = character(0),
+                                    item_1L_chr = "Item",
+                                    subdivision_1L_chr = c("Subdivision", "Discipline")){
+  subdivision_1L_chr <- match.arg(subdivision_1L_chr)
+  select_chr <- c(include_1L_chr, select_chr) %>% unique()
+  categories_chr <- data_tb$Category %>% unique()
+  divisions_ls <- categories_chr %>% purrr::map(~{
+    category_1L_chr <- .x
+    subcategories_chr <- data_tb %>% dplyr::filter(Category == category_1L_chr) %>% dplyr::pull(Subcategory) %>% unique()
+    subdisions_ls <- subcategories_chr %>% purrr::map(~data_tb %>% dplyr::filter(Category == category_1L_chr, Subcategory == .x) %>% dplyr::pull(!!rlang::sym(subdivision_1L_chr)) %>% unique() %>% sort()) %>% stats::setNames(subcategories_chr)
+    subdisions_ls
+  }) %>% stats::setNames(categories_chr)
+  summary_tb <- data_tb %>% dplyr::select(tidyselect::any_of(c("UID", "Category", "Subcategory", subdivision_1L_chr, item_1L_chr, select_chr, extras_chr))) %>% tidyr::complete(UID, Category, Subcategory, !!rlang::sym(subdivision_1L_chr))
+  summary_tb <- summary_tb %>%
+    dplyr::mutate(Allowed = purrr::pmap_lgl(., ~ifelse(!(..3 %in% names(divisions_ls[[..2]])),
+                                                       F,
+                                                       ifelse(!(..4 %in% divisions_ls[[..2]][[..3]]),F,T)
+    ))) %>%
+    dplyr::filter(Allowed) %>% dplyr::select(-Allowed)
+  totals_tb <- summary_tb %>%
+    dplyr::filter(!!rlang::sym(subdivision_1L_chr) == "Total")
+  summary_tb <- summary_tb %>%
+    dplyr::filter(!!rlang::sym(subdivision_1L_chr) != "Total") %>%
+    dplyr::group_by(UID, Category, Subcategory, !!rlang::sym(subdivision_1L_chr)) %>%
+    dplyr::summarise(!!rlang::sym(item_1L_chr) := "Total",
+                     dplyr::across(tidyselect::any_of(select_chr), ~ sum(.x, na.rm = TRUE)))
+  summary_tb <- rbind(summary_tb, totals_tb) %>% dplyr::arrange(UID, Category, Subcategory, !!rlang::sym(subdivision_1L_chr), !!rlang::sym(item_1L_chr)) %>%
+    dplyr::mutate(Included = !is.na(!!rlang::sym(include_1L_chr)))
+  summary_ls <- list(sudbivisions_tb = summary_tb)
+  totals_tb <- summary_tb %>%
+    dplyr::filter(Subcategory == "Total") %>%
+    dplyr::select(-c(!!rlang::sym(subdivision_1L_chr), Included))
+  summary_tb <- summary_tb %>%
+    dplyr::filter(Subcategory != "Total") %>%
+    dplyr::group_by(UID, Category, Subcategory) %>% dplyr::summarise(!!rlang::sym(subdivision_1L_chr) := "Total",
+                                                                     dplyr::across(tidyselect::any_of(select_chr), ~ sum(.x, na.rm = TRUE)))
+  summary_tb <- rbind(summary_tb, totals_tb) %>% dplyr::arrange(UID, Category, Subcategory) %>%
+    dplyr::mutate(Included = !is.na(!!rlang::sym(include_1L_chr)))
+  summary_ls$subcategories_tb <- summary_tb
+  summary_tb <- summary_tb %>%
+    dplyr::group_by(UID, Category) %>% dplyr::summarise(Subcategory = "Total",
+                                                        dplyr::across(tidyselect::any_of(select_chr), ~ sum(.x, na.rm = TRUE))
+                                                        # `$` = sum(`$`, na.rm = T)
+    ) %>% dplyr::arrange(UID, Category) %>%
+    dplyr::mutate(Included = !is.na(!!rlang::sym(include_1L_chr)))
+  summary_ls$Categories_tb <- summary_tb
+  summary_ls <- summary_ls %>% purrr::map(~dplyr::left_join(.x, data_tb %>% dplyr::select(UID, Program, Service, Provider, FirstEight, Year, Period, Start, End) %>% dplyr::distinct()) %>%
+                                            dplyr::mutate(Date = purrr::map2(Start, End, ~
+                                                                               {
+                                                                                 interval_dtm <- lubridate::interval(lubridate::ymd(.x),lubridate::ymd(.y))
+                                                                                 interval_dtm@start + lubridate::as.duration(interval_dtm)/2
+
+                                                                               }) %>% purrr::map_vec(~as.Date(.x)) ) %>%
+                                            dplyr::mutate(Months = Period,
+                                                          Period = UID %>% stringr::str_sub(start=-11)) %>%
+                                            dplyr::ungroup() %>%
+                                            dplyr::select(tidyselect::any_of(c("UID", "Program", "Service", "Provider", "FirstEight", "Year", "Months","Period", "Start", "End", "Date", "Category", "Subcategory", subdivision_1L_chr, item_1L_chr, select_chr, "Included"))))
+
+  return(summary_ls)
+
+}
 make_base_case_tb <- function(forecast_tb,
                               add_ls = NULL,
                               scenario_1L_chr = "Base case",
@@ -100,6 +164,42 @@ make_cumulatives <- function(prefix_1L_chr = "Cumulative",
 make_date_tfmn_fn <- function(format_1L_chr = "%d-%b-%y"){
   date_tfmn_fn <- eval(parse(text=paste0("function(x){format(x,\"",format_1L_chr,"\") %>% as.Date(\"",format_1L_chr,"\")}")))
   return(date_tfmn_fn)
+}
+make_duplicates_ls <- function(data_tb){
+  categories_chr <- data_tb %>% dplyr::pull(Category) %>% unique() %>% sort()
+  duplicates_ls <- categories_chr %>% purrr::map(~{
+    category_1L_chr <- .x
+    subcategories_chr <- data_tb %>% dplyr::filter(Category == category_1L_chr) %>% dplyr::pull(Subcategory) %>% unique() %>% sort()
+    subcategories_chr %>% purrr::map(~make_duplicates_tb(data_tb, category_1L_chr = category_1L_chr, subcategory_1L_chr = .x)) %>%
+      stats::setNames(subcategories_chr)
+  }) %>%
+    stats::setNames(categories_chr)
+  return(duplicates_ls)
+}
+make_duplicate_totals_tb <- function(data_tb,
+                                     type_1L_chr = c("Category", "Subcategory","Subdivision", "Discipline")){
+  type_1L_chr <- match.arg(type_1L_chr)
+  groupings_chr <- c("Category", "Subcategory",
+                     ifelse(type_1L_chr == "Discipline","Discipline","Subdivision"))
+  pick_1L_int <- which(groupings_chr==type_1L_chr)
+  aggregate_at_1L_chr <- groupings_chr[pick_1L_int]
+  groupings_chr <- c("UID", groupings_chr[ifelse(pick_1L_int-1>0,1,0):(pick_1L_int-1)])
+  duplicate_totals_tb <- data_tb %>%
+    dplyr::group_by(dplyr::across(tidyselect::all_of(groupings_chr))) %>%
+    dplyr::summarise(!!rlang::sym(aggregate_at_1L_chr) := list(!!rlang::sym(aggregate_at_1L_chr))) %>%
+    dplyr::filter(!!rlang::sym(aggregate_at_1L_chr) %>% purrr::map_lgl(~("Total" %in% .x) & length(.x)>1))
+  return(duplicate_totals_tb)
+}
+make_duplicates_tb <- function(data_tb,
+                               category_1L_chr,
+                               subcategory_1L_chr){
+  ids_chr <- data_tb %>% dplyr::filter(Subcategory == subcategory_1L_chr) %>% dplyr::pull(UID) %>% unique()
+  duplicates_tb <- data_tb %>% dplyr::filter(UID %in% ids_chr & Category == category_1L_chr) %>% dplyr::arrange(UID)
+  duplicates_tb <- duplicates_tb %>% dplyr::group_by(UID,
+                                                     Subcategory ###
+  ) %>% dplyr::mutate(Count = dplyr::n()) %>% dplyr::ungroup() %>% dplyr::arrange(UID)
+  duplicates_tb <- duplicates_tb %>% dplyr::filter(Count>1)
+  return(duplicates_tb)
 }
 make_episodes_vars <- function(active_var_1L_chr = "Active",
                                episode_var_1L_chr = "Episodes",
