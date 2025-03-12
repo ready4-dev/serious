@@ -72,7 +72,10 @@ write_citation_fl(z$x_ready4fun_manifest)
 paste0(".github/workflows/", c("pkgdown.yaml", "R-CMD-check.yaml")) %>%
   purrr::walk(~{
     path_1L_chr <- .x
-    readLines(path_1L_chr)[-(which(readLines(path_1L_chr) %>% startsWith("    # Addresses issue with incompatibility between libcurl4-gnutls-dev and libcurl4-openssl-dev")) %>%
-                               purrr::map(~.x:(.x+6)) %>% purrr::flatten_int())] %>%
-      writeLines(path_1L_chr)
+    matches_int <- which(readLines(path_1L_chr) %>% startsWith("    # Addresses issue with incompatibility between libcurl4-gnutls-dev and libcurl4-openssl-dev") | readLines(path_1L_chr) %>% startsWith("        # Addresses issue with incompatibility between libcurl4-gnutls-dev and libcurl4-openssl-dev"))
+    if(!identical(matches_int,integer(0))){
+      readLines(path_1L_chr)[- (matches_int%>%
+                                  purrr::map(~.x:(.x+6)) %>% purrr::flatten_int())] %>%
+        writeLines(path_1L_chr)
+    }
   })
