@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">serious</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9007</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9009</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,7 +41,7 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_new_uid</span><span class="op">(</span></span>
 <span>  <span class="va">data_tb</span>,</span>
 <span>  <span class="va">uid_vars_chr</span>,</span>
-<span>  <span class="va">uid_pfx_1L_chr</span>,</span>
+<span>  uid_pfx_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  arrange_by_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  drop_old_uids_1L_lgl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  new_uid_var_1L_chr <span class="op">=</span> <span class="st">"UID"</span>,</span>
@@ -65,7 +65,7 @@
 
 
 <dt id="arg-uid-pfx-l-chr">uid_pfx_1L_chr<a class="anchor" aria-label="anchor" href="#arg-uid-pfx-l-chr"></a></dt>
-<dd><p>Unique identifier prefix (a character vector of length one)</p></dd>
+<dd><p>Unique identifier prefix (a character vector of length one), Default: character(0)</p></dd>
 
 
 <dt id="arg-arrange-by-l-chr">arrange_by_1L_chr<a class="anchor" aria-label="anchor" href="#arg-arrange-by-l-chr"></a></dt>
