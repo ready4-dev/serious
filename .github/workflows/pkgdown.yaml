@@ -35,10 +35,6 @@ jobs:
         with:
           use-public-rspm: true
 
-          sudo apt update
-
-          sudo apt update
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::XML, any::pkgdown, local::.
