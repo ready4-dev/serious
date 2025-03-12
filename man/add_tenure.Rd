@@ -5,17 +5,20 @@
 \title{Add tenure}
 \usage{
 add_tenure(
-  data_tb,
+  data_xx,
   date_var_1L_chr = "Date",
+  tenure_ctg_1L_chr = "Temporal",
   tenure_var_1L_chr = "Tenure",
   uid_var_1L_chr = "UID",
   unit_1L_chr = "year"
 )
 }
 \arguments{
-\item{data_tb}{Data (a tibble)}
+\item{data_xx}{Data (an output object of multiple potential types)}
 
 \item{date_var_1L_chr}{Date variable (a character vector of length one), Default: 'Date'}
+
+\item{tenure_ctg_1L_chr}{Tenure category (a character vector of length one), Default: 'Temporal'}
 
 \item{tenure_var_1L_chr}{Tenure variable (a character vector of length one), Default: 'Tenure'}
 
@@ -24,9 +27,9 @@ add_tenure(
 \item{unit_1L_chr}{Unit (a character vector of length one), Default: 'year'}
 }
 \value{
-Data (a tibble)
+Data (an output object of multiple potential types)
 }
 \description{
-add_tenure() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add tenure. The function returns Data (a tibble).
+add_tenure() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add tenure. The function returns Data (an output object of multiple potential types).
 }
 \keyword{internal}

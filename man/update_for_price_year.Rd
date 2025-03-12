@@ -6,6 +6,7 @@
 \usage{
 update_for_price_year(
   data_tb,
+  cost_vars_chr = character(0),
   cost_current_1L_chr = "Cost",
   cost_constant_1L_chr = "Cost",
   price_indices_dbl = numeric(0),
@@ -15,6 +16,8 @@ update_for_price_year(
 }
 \arguments{
 \item{data_tb}{Data (a tibble)}
+
+\item{cost_vars_chr}{Cost variables (a character vector), Default: character(0)}
 
 \item{cost_current_1L_chr}{Cost current (a character vector of length one), Default: 'Cost'}
 
@@ -32,4 +35,3 @@ Data (a tibble)
 \description{
 update_for_price_year() is an Update function that edits an object, while preserving core object attributes. Specifically, this function implements an algorithm to update for price year. The function returns Data (a tibble).
 }
-\keyword{internal}

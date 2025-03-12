@@ -283,8 +283,14 @@ add_episodes <- function (data_xx, separation_after_dbl, index_1L_int = integer(
             flatten_1L_lgl = F)
         X_Ready4useDyad <- 1:length(separation_after_dbl) %>% 
             purrr::reduce(.init = X_Ready4useDyad, ~.x %>% add_episodes(separation_after_dbl = separation_after_dbl, 
-                index_1L_int = .y, end_date_dtm = end_date_dtm, 
-                episodes_vars_chr = episodes_vars_ls[[.y]], unit_1L_chr = unit_1L_chr))
+                active_var_1L_chr = active_var_1L_chr, activity_var_1L_chr = activity_var_1L_chr, 
+                date_tfmn_fn = date_tfmn_fn, date_var_1L_chr = date_var_1L_chr, 
+                end_date_dtm = end_date_dtm, episodes_vars_chr = episodes_vars_ls[[.y]], 
+                exclude_chr = exclude_chr, index_1L_int = .y, 
+                fiscal_start_1L_int = fiscal_start_1L_int, metrics_chr = metrics_chr, 
+                prefix_1L_chr = prefix_1L_chr, separations_var_1L_chr = separations_var_1L_chr, 
+                temporal_vars_chr = temporal_vars_chr, uid_1L_chr = uid_1L_chr, 
+                unit_1L_chr = unit_1L_chr))
     }
     else {
         X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>% dplyr::mutate(`:=`(!!rlang::sym(episodes_vars_chr[1]), 
@@ -423,7 +429,7 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
 #' @description add_new_uid() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add new unique identifier. The function returns Data (a tibble).
 #' @param data_tb Data (a tibble)
 #' @param uid_vars_chr Unique identifier variables (a character vector)
-#' @param uid_pfx_1L_chr Unique identifier prefix (a character vector of length one)
+#' @param uid_pfx_1L_chr Unique identifier prefix (a character vector of length one), Default: character(0)
 #' @param arrange_by_1L_chr Arrange by (a character vector of length one), Default: character(0)
 #' @param drop_old_uids_1L_lgl Drop old unique identifiers (a logical vector of length one), Default: FALSE
 #' @param new_uid_var_1L_chr New unique identifier variable (a character vector of length one), Default: 'UID'
@@ -444,15 +450,17 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
 #' @importFrom youthvars add_uids_to_tbs_ls
 #' @importFrom ready4show ready4show_correspondences renew.ready4show_correspondences
 #' @keywords internal
-add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr, arrange_by_1L_chr = character(0), 
-    drop_old_uids_1L_lgl = FALSE, new_uid_var_1L_chr = "UID", 
-    imputed_uid_pfx_chr = "UNK", place_first_1L_lgl = TRUE, recode_1L_lgl = FALSE, 
-    recode_pfx_1L_chr = "Person_") 
+add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0), 
+    arrange_by_1L_chr = character(0), drop_old_uids_1L_lgl = FALSE, 
+    new_uid_var_1L_chr = "UID", imputed_uid_pfx_chr = "UNK", 
+    place_first_1L_lgl = TRUE, recode_1L_lgl = FALSE, recode_pfx_1L_chr = "Person_") 
 {
-    test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>% 
-        dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na), 
-        imputed_uid_pfx_chr)), msg = "Prefix for imputed identifiers must not be the same as the prefix used for the secondary identifier")
     if (length(uid_vars_chr) > 1) {
+        test_1L_lgl <- assertthat::assert_that(!identical(uid_pfx_1L_chr, 
+            character(0)), msg = "Value must be supplied for uid_pfx_1L_chr when more than one uid variable supplied.")
+        test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>% 
+            dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na), 
+            imputed_uid_pfx_chr)), msg = "Prefix for imputed identifiers must not be the same as the prefix used for the secondary identifier")
         test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>% 
             dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na), 
             uid_pfx_1L_chr)), msg = "Secondary identifier variable must not have same prefix as used for primary identifier")
@@ -470,6 +478,10 @@ add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr, arrange_by_1L_ch
             dplyr::case_when(is.na(!!rlang::sym(new_uid_var_1L_chr)) ~ 
                 !!rlang::sym(uid_vars_chr[1]) %>% purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]), 
                   ~ifelse(is.na(.x), .y, .x)), T ~ !!rlang::sym(new_uid_var_1L_chr))))
+    }
+    if (!new_uid_var_1L_chr %in% names(data_tb)) {
+        data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(new_uid_var_1L_chr), 
+            !!rlang::sym(uid_vars_chr[1])))
     }
     complete_ids_tb <- data_tb %>% dplyr::filter(!is.na(!!rlang::sym(new_uid_var_1L_chr)))
     imputed_ids_tb <- list(data_tb %>% dplyr::filter(is.na(!!rlang::sym(new_uid_var_1L_chr)))) %>% 
@@ -737,28 +749,37 @@ add_temporal_vars <- function (data_tb, date_var_1L_chr = "Date", fiscal_start_1
     return(data_tb)
 }
 #' Add tenure
-#' @description add_tenure() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add tenure. The function returns Data (a tibble).
-#' @param data_tb Data (a tibble)
+#' @description add_tenure() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add tenure. The function returns Data (an output object of multiple potential types).
+#' @param data_xx Data (an output object of multiple potential types)
 #' @param date_var_1L_chr Date variable (a character vector of length one), Default: 'Date'
+#' @param tenure_ctg_1L_chr Tenure category (a character vector of length one), Default: 'Temporal'
 #' @param tenure_var_1L_chr Tenure variable (a character vector of length one), Default: 'Tenure'
 #' @param uid_var_1L_chr Unique identifier variable (a character vector of length one), Default: 'UID'
 #' @param unit_1L_chr Unit (a character vector of length one), Default: 'year'
-#' @return Data (a tibble)
+#' @return Data (an output object of multiple potential types)
 #' @rdname add_tenure
 #' @export 
-#' @importFrom dplyr group_by mutate first ungroup select everything
+#' @importFrom dplyr arrange group_by mutate first ungroup select everything
 #' @importFrom rlang sym
 #' @importFrom lubridate time_length
+#' @importFrom ready4use add_dictionary renew.ready4use_dictionary
 #' @keywords internal
-add_tenure <- function (data_tb, date_var_1L_chr = "Date", tenure_var_1L_chr = "Tenure", 
-    uid_var_1L_chr = "UID", unit_1L_chr = "year") 
+add_tenure <- function (data_xx, date_var_1L_chr = "Date", tenure_ctg_1L_chr = "Temporal", 
+    tenure_var_1L_chr = "Tenure", uid_var_1L_chr = "UID", unit_1L_chr = "year") 
 {
-    data_tb <- data_tb %>% dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>% 
-        dplyr::mutate(`:=`(!!rlang::sym(tenure_var_1L_chr), (!!rlang::sym(date_var_1L_chr) - 
-            dplyr::first(!!rlang::sym(date_var_1L_chr))) %>% 
+    X_Ready4useDyad <- transform_data_fmt(data_xx, type_1L_chr = "input")
+    X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "ds_tb", X_Ready4useDyad@ds_tb %>% 
+        dplyr::arrange(!!rlang::sym(uid_var_1L_chr), !!rlang::sym(date_var_1L_chr)) %>% 
+        dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>% dplyr::mutate(`:=`(!!rlang::sym(tenure_var_1L_chr), 
+        (!!rlang::sym(date_var_1L_chr) - dplyr::first(!!rlang::sym(date_var_1L_chr))) %>% 
             lubridate::time_length(unit = unit_1L_chr))) %>% 
         dplyr::ungroup() %>% dplyr::select(!!rlang::sym(uid_var_1L_chr), 
         !!rlang::sym(date_var_1L_chr), !!rlang::sym(tenure_var_1L_chr), 
-        dplyr::everything())
-    return(data_tb)
+        dplyr::everything()))
+    X_Ready4useDyad <- X_Ready4useDyad %>% ready4use::add_dictionary(new_cases_r3 = ready4use_dictionary() %>% 
+        ready4use::renew.ready4use_dictionary(var_nm_chr = tenure_var_1L_chr, 
+            var_ctg_chr = tenure_ctg_1L_chr, var_desc_chr = tenure_var_1L_chr, 
+            var_type_chr = "numeric"))
+    data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
+    return(data_xx)
 }

@@ -32,7 +32,8 @@ x <- ready4fun::make_pkg_desc_ls(pkg_title_1L_chr = "Develop, Test and Apply Tim
                                                                         "make_metrics_summary",
                                                                         "make_new_correspondences",
                                                                         "make_ts_models",
-                                                                        "transform_to_tsibble")),##
+                                                                        "transform_to_tsibble",
+                                                                        "update_for_price_year")),##
   dev_pkgs_chr = c(#"cmdstanr",
     #"ready4",#"ready4fun",
     "ready4use",

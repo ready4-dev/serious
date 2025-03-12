@@ -1,17 +1,28 @@
-update_for_price_year <- function(data_tb,
-                                  cost_current_1L_chr = "Cost",
-                                  cost_constant_1L_chr = "Cost",
-                                  price_indices_dbl = numeric(0),
-                                  price_ref_1L_int = 1L,
-                                  time_var_1L_chr = "FiscalYear"){
-  if(!identical(price_indices_dbl, numeric(0))){
-    multipliers_dbl <- purrr::map_dbl(price_indices_dbl, ~.x/price_indices_dbl[price_ref_1L_int])
+update_for_price_year <- function (data_tb,
+                                   cost_vars_chr = character(0),
+                                   cost_current_1L_chr = "Cost",
+                                   cost_constant_1L_chr = "Cost",
+                                   price_indices_dbl = numeric(0),
+                                   price_ref_1L_int = 1L,
+                                   time_var_1L_chr = "FiscalYear"){
+  if (!identical(price_indices_dbl, numeric(0))) {
+    multipliers_dbl <- purrr::map_dbl(price_indices_dbl,
+                                      ~price_indices_dbl[price_ref_1L_int]/.x)
     multipliers_tb <- tibble::tibble(PriceYearMultiplier = multipliers_dbl,
-                                     !!rlang::sym(time_var_1L_chr) := names(price_indices_dbl))
-    data_tb <- data_tb %>% dplyr::left_join(multipliers_tb)
-    data_tb <- data_tb %>%
-      dplyr::mutate(!!rlang::sym(cost_constant_1L_chr) := !!rlang::sym(cost_constant_1L_chr)*PriceYearMultiplier) %>%
-      dplyr::select(-PriceYearMultiplier)
+                                     `:=`(!!rlang::sym(time_var_1L_chr), names(price_indices_dbl)))
+    if(identical(cost_vars_chr, character(0))){
+      data_tb <- data_tb %>% dplyr::left_join(multipliers_tb)
+      data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(cost_constant_1L_chr),
+                                                !!rlang::sym(cost_constant_1L_chr) * PriceYearMultiplier)) %>%
+        dplyr::select(-PriceYearMultiplier)
+    }else{
+      data_tb <- purrr::reduce(multipliers_tb$FiscalYear,
+                               .init = data_tb,
+                               ~ .x %>% dplyr::mutate(!!rlang::sym(.y) := !!rlang::sym(.y) * ready4::get_from_lup_obj(multipliers_tb,
+                                                                                                                      target_var_nm_1L_chr = "PriceYearMultiplier",
+                                                                                                                      match_var_nm_1L_chr = "FiscalYear",
+                                                                                                                      match_value_xx = .y)))
+    }
   }
   return(data_tb)
 }

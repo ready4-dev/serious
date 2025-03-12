@@ -27,3 +27,4 @@ reference:
   - make_new_correspondences
   - make_ts_models
   - transform_to_tsibble
+  - update_for_price_year

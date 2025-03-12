@@ -141,96 +141,119 @@ add_disengaged <- function(data_xx,
   }
   return(data_xx)
 }
-add_episodes <- function(data_xx,
-                         separation_after_dbl,
-                         index_1L_int = integer(0),
-                         active_var_1L_chr = "Active",
-                         activity_var_1L_chr = "Activity",
-                         date_tfmn_fn = lubridate::ymd,
-                         date_var_1L_chr = "Date",
-                         end_date_dtm = NULL,
-                         episode_var_1L_chr = "Episodes",
-                         episodes_vars_chr = character(0),
-                         exclude_chr = "Duration",
-                         fiscal_start_1L_int = 7L,
-                         metrics_chr = make_metric_vars(),
-                         prefix_1L_chr = "Cumulative",
-                         separations_var_1L_chr = "Separations",
-                         temporal_vars_chr = make_temporal_vars(),
-                         uid_1L_chr = "UID",
-                         unit_1L_chr = "month"){
-  if(inherits(data_xx,"Ready4useDyad")){
+add_episodes <- function (data_xx, separation_after_dbl, index_1L_int = integer(0),
+                          active_var_1L_chr = "Active", activity_var_1L_chr = "Activity",
+                          date_tfmn_fn = lubridate::ymd, date_var_1L_chr = "Date",
+                          end_date_dtm = NULL, episode_var_1L_chr = "Episodes", episodes_vars_chr = character(0),
+                          exclude_chr = "Duration", fiscal_start_1L_int = 7L, metrics_chr = make_metric_vars(),
+                          prefix_1L_chr = "Cumulative", separations_var_1L_chr = "Separations",
+                          temporal_vars_chr = make_temporal_vars(), uid_1L_chr = "UID",
+                          unit_1L_chr = "month")
+{
+  if (inherits(data_xx, "Ready4useDyad")) {
     X_Ready4useDyad <- data_xx
-  }else{
+  }
+  else {
     X_Ready4useDyad <- ready4use::Ready4useDyad(ds_tb = data_xx)
   }
-  if(is.null(end_date_dtm)){
+  if (is.null(end_date_dtm)) {
     end_date_dtm <- max(X_Ready4useDyad@ds_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr)))
   }
-  if(identical(index_1L_int, integer(0))){
-    episodes_vars_ls <- make_episodes_vars(active_var_1L_chr = active_var_1L_chr, episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl, separations_var_1L_chr = separations_var_1L_chr, flatten_1L_lgl = F)
+  if (identical(index_1L_int, integer(0))) {
+    episodes_vars_ls <- make_episodes_vars(active_var_1L_chr = active_var_1L_chr,
+                                           episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl,
+                                           separations_var_1L_chr = separations_var_1L_chr,
+                                           flatten_1L_lgl = F)
     X_Ready4useDyad <- 1:length(separation_after_dbl) %>%
-      purrr::reduce(.init = X_Ready4useDyad,
-                    ~  .x %>% add_episodes(separation_after_dbl = separation_after_dbl, index_1L_int = .y, end_date_dtm = end_date_dtm, episodes_vars_chr = episodes_vars_ls[[.y]], unit_1L_chr = unit_1L_chr))
-  }else{
-    X_Ready4useDyad@ds_tb <-  X_Ready4useDyad@ds_tb %>%
-      dplyr::mutate(!!rlang::sym(episodes_vars_chr[1]) := 0,
-                    !!rlang::sym(episodes_vars_chr[2]) := 0,
-                    !!rlang::sym(episodes_vars_chr[3]) := 0,
-                    !!rlang::sym(paste0(prefix_1L_chr, episodes_vars_chr[2])) := 0,
-                    !!rlang::sym(paste0(prefix_1L_chr, episodes_vars_chr[3])) := 0) %>%
-      dplyr::group_by(!!rlang::sym(uid_1L_chr)) %>%
+      purrr::reduce(.init = X_Ready4useDyad, ~.x %>% add_episodes(separation_after_dbl = separation_after_dbl,
+                                                                  active_var_1L_chr = active_var_1L_chr, activity_var_1L_chr = activity_var_1L_chr,
+                                                                  date_tfmn_fn = date_tfmn_fn, date_var_1L_chr = date_var_1L_chr,
+                                                                  end_date_dtm = end_date_dtm, episodes_vars_chr = episodes_vars_ls[[.y]], exclude_chr = exclude_chr,
+                                                                  index_1L_int = .y, fiscal_start_1L_int = fiscal_start_1L_int, metrics_chr = metrics_chr,
+                                                                  prefix_1L_chr = prefix_1L_chr, separations_var_1L_chr = separations_var_1L_chr, temporal_vars_chr = temporal_vars_chr, uid_1L_chr = uid_1L_chr,
+                                                                  unit_1L_chr = unit_1L_chr))
+  }
+  else {
+    X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>% dplyr::mutate(`:=`(!!rlang::sym(episodes_vars_chr[1]),
+                                                                          0), `:=`(!!rlang::sym(episodes_vars_chr[2]), 0),
+                                                                     `:=`(!!rlang::sym(episodes_vars_chr[3]), 0), `:=`(!!rlang::sym(paste0(prefix_1L_chr,
+                                                                                                                                           episodes_vars_chr[2])), 0), `:=`(!!rlang::sym(paste0(prefix_1L_chr,
+                                                                                                                                                                                                episodes_vars_chr[3])), 0)) %>% dplyr::group_by(!!rlang::sym(uid_1L_chr)) %>%
       dplyr::arrange(!!rlang::sym(date_var_1L_chr)) %>%
-      dplyr::mutate(Interval_Since_Last_OOS = ifelse(startsWith(dplyr::lag(!!rlang::sym(activity_var_1L_chr)), paste0("Separation", episodes_vars_chr[3] %>% stringr::str_remove(separations_var_1L_chr))), NA, dplyr::lag(!!rlang::sym(date_var_1L_chr))) %>% as.Date()
-      ) %>%
-      tidyr::fill(Interval_Since_Last_OOS) %>%
-      dplyr::mutate(Interval_Since_Last_OOS = dplyr::case_when(is.na(Interval_Since_Last_OOS) ~ !!rlang::sym(date_var_1L_chr),
-                                                               TRUE ~ Interval_Since_Last_OOS))
-    X_Ready4useDyad@ds_tb$Interval_Since_Last_OOS <- (X_Ready4useDyad@ds_tb %>% dplyr::pull(!!rlang::sym(date_var_1L_chr)) - X_Ready4useDyad@ds_tb$Interval_Since_Last_OOS) %>% lubridate::as.duration()
-    X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>%
-      dplyr::mutate(!!rlang::sym(episodes_vars_chr[2]) := dplyr::case_when((Interval_Since_Last_OOS > lubridate::duration(separation_after_dbl[index_1L_int], units = unit_1L_chr)) & !startsWith(!!rlang::sym(activity_var_1L_chr), "Separation") ~ 1,
-                                                                           dplyr::row_number() == 1 ~ 1,
-                                                                           TRUE ~ 0)) %>%
-      dplyr::mutate(!!rlang::sym(episodes_vars_chr[1]) := !!rlang::sym(episodes_vars_chr[2])) %>%
-      dplyr::mutate(!!rlang::sym(paste0(prefix_1L_chr, episodes_vars_chr[2])) := cumsum(!!rlang::sym(episodes_vars_chr[2]))) %>%
-      dplyr::ungroup() %>%
-      dplyr::arrange(!!rlang::sym(uid_1L_chr)) %>%
+      dplyr::mutate(Interval_Since_Last_OOS = ifelse(startsWith(dplyr::lag(!!rlang::sym(activity_var_1L_chr)),
+                                                                paste0("Separation", episodes_vars_chr[3] %>%
+                                                                         stringr::str_remove(separations_var_1L_chr))),
+                                                     NA, dplyr::lag(!!rlang::sym(date_var_1L_chr))) %>%
+                      as.Date()) %>% tidyr::fill(Interval_Since_Last_OOS) %>%
+      dplyr::mutate(Interval_Since_Last_OOS = dplyr::case_when(is.na(Interval_Since_Last_OOS) ~
+                                                                 !!rlang::sym(date_var_1L_chr), TRUE ~ Interval_Since_Last_OOS))
+    X_Ready4useDyad@ds_tb$Interval_Since_Last_OOS <- (X_Ready4useDyad@ds_tb %>%
+                                                        dplyr::pull(!!rlang::sym(date_var_1L_chr)) - X_Ready4useDyad@ds_tb$Interval_Since_Last_OOS) %>%
+      lubridate::as.duration()
+    X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>% dplyr::mutate(`:=`(!!rlang::sym(episodes_vars_chr[2]),
+                                                                          dplyr::case_when((Interval_Since_Last_OOS > lubridate::duration(separation_after_dbl[index_1L_int],
+                                                                                                                                          units = unit_1L_chr)) & !startsWith(!!rlang::sym(activity_var_1L_chr),
+                                                                                                                                                                              "Separation") ~ 1, dplyr::row_number() == 1 ~
+                                                                                             1, TRUE ~ 0))) %>% dplyr::mutate(`:=`(!!rlang::sym(episodes_vars_chr[1]),
+                                                                                                                                   !!rlang::sym(episodes_vars_chr[2]))) %>% dplyr::mutate(`:=`(!!rlang::sym(paste0(prefix_1L_chr,
+                                                                                                                                                                                                                   episodes_vars_chr[2])), cumsum(!!rlang::sym(episodes_vars_chr[2])))) %>%
+      dplyr::ungroup() %>% dplyr::arrange(!!rlang::sym(uid_1L_chr)) %>%
       dplyr::select(-Interval_Since_Last_OOS)
-    separations_tb <- X_Ready4useDyad@ds_tb %>%
-      dplyr::filter(!!rlang::sym(activity_var_1L_chr) != paste0("Separation", episodes_vars_chr[3] %>% stringr::str_remove(separations_var_1L_chr))) %>%
-      dplyr::group_by(!!rlang::sym(uid_1L_chr), !!rlang::sym(paste0(prefix_1L_chr,episodes_vars_chr[2]))) %>%
-      dplyr::summarise(!!rlang::sym(date_var_1L_chr) := (dplyr::last(!!rlang::sym(date_var_1L_chr)) + lubridate::duration(separation_after_dbl[index_1L_int], units = unit_1L_chr)) %>% as.Date() %>% date_tfmn_fn(),
-                       !!rlang::sym(activity_var_1L_chr) := paste0("Separation", episodes_vars_chr[3] %>% stringr::str_remove(separations_var_1L_chr)),
-                       dplyr::across(c(setdiff(metrics_chr, episodes_vars_chr), episodes_vars_chr[2]), ~ 0),
-                       !!rlang::sym(episodes_vars_chr[3]) := 1,
-                       !!rlang::sym(episodes_vars_chr[1]) := -1,
-                       dplyr::across(setdiff(names(X_Ready4useDyad@ds_tb),
-                                             c(uid_1L_chr, date_var_1L_chr,
-                                               make_episodes_vars(active_var_1L_chr = active_var_1L_chr, episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl, separations_var_1L_chr = separations_var_1L_chr, flatten_1L_lgl = T),
-                                               paste0(prefix_1L_chr, episodes_vars_chr[3]),activity_var_1L_chr,temporal_vars_chr, metrics_chr, exclude_chr, paste0(prefix_1L_chr,episodes_vars_chr[2]))), dplyr::last),
-                       dplyr::across(intersect(setdiff(make_episodes_vars(active_var_1L_chr = active_var_1L_chr, episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl, separations_var_1L_chr = separations_var_1L_chr, flatten_1L_lgl = T),
-                                                       episodes_vars_chr), names(X_Ready4useDyad@ds_tb)), ~0)) %>%
-      dplyr::mutate(!!rlang::sym(paste0(prefix_1L_chr, episodes_vars_chr[3])) := cumsum(!!rlang::sym(episodes_vars_chr[3]))) %>%
-      dplyr::ungroup() %>%
-      dplyr::filter(!!rlang::sym(date_var_1L_chr)<= end_date_dtm) %>%
-      add_temporal_vars(date_var_1L_chr = date_var_1L_chr, fiscal_start_1L_int = fiscal_start_1L_int, temporal_vars_chr = temporal_vars_chr)
-    X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>%
-      dplyr::bind_rows(separations_tb) %>%
-      dplyr::arrange(!!rlang::sym(uid_1L_chr),!!rlang::sym(date_var_1L_chr)) %>%
+    separations_tb <- X_Ready4useDyad@ds_tb %>% dplyr::filter(!!rlang::sym(activity_var_1L_chr) !=
+                                                                paste0("Separation", episodes_vars_chr[3] %>% stringr::str_remove(separations_var_1L_chr))) %>%
+      dplyr::group_by(!!rlang::sym(uid_1L_chr), !!rlang::sym(paste0(prefix_1L_chr,
+                                                                    episodes_vars_chr[2]))) %>% dplyr::summarise(`:=`(!!rlang::sym(date_var_1L_chr),
+                                                                                                                      (dplyr::last(!!rlang::sym(date_var_1L_chr)) + lubridate::duration(separation_after_dbl[index_1L_int],
+                                                                                                                                                                                        units = unit_1L_chr)) %>% as.Date() %>% date_tfmn_fn()),
+                                                                                                                 `:=`(!!rlang::sym(activity_var_1L_chr), paste0("Separation",
+                                                                                                                                                                episodes_vars_chr[3] %>% stringr::str_remove(separations_var_1L_chr))),
+                                                                                                                 dplyr::across(c(setdiff(metrics_chr, episodes_vars_chr),
+                                                                                                                                 episodes_vars_chr[2]), ~0), `:=`(!!rlang::sym(episodes_vars_chr[3]),
+                                                                                                                                                                  1), `:=`(!!rlang::sym(episodes_vars_chr[1]),
+                                                                                                                                                                           -1), dplyr::across(setdiff(names(X_Ready4useDyad@ds_tb),
+                                                                                                                                                                                                      c(uid_1L_chr, date_var_1L_chr, make_episodes_vars(active_var_1L_chr = active_var_1L_chr,
+                                                                                                                                                                                                                                                        episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl,
+                                                                                                                                                                                                                                                        separations_var_1L_chr = separations_var_1L_chr,
+                                                                                                                                                                                                                                                        flatten_1L_lgl = T), paste0(prefix_1L_chr,
+                                                                                                                                                                                                                                                                                    episodes_vars_chr[3]), activity_var_1L_chr,
+                                                                                                                                                                                                        temporal_vars_chr, metrics_chr, exclude_chr,
+                                                                                                                                                                                                        paste0(prefix_1L_chr, episodes_vars_chr[2]))),
+                                                                                                                                                                                              dplyr::last), dplyr::across(intersect(setdiff(make_episodes_vars(active_var_1L_chr = active_var_1L_chr,
+                                                                                                                                                                                                                                                               episode_var_1L_chr = episode_var_1L_chr, separation_after_dbl = separation_after_dbl,
+                                                                                                                                                                                                                                                               separations_var_1L_chr = separations_var_1L_chr,
+                                                                                                                                                                                                                                                               flatten_1L_lgl = T), episodes_vars_chr), names(X_Ready4useDyad@ds_tb)),
+                                                                                                                                                                                                                          ~0)) %>% dplyr::mutate(`:=`(!!rlang::sym(paste0(prefix_1L_chr,
+                                                                                                                                                                                                                                                                          episodes_vars_chr[3])), cumsum(!!rlang::sym(episodes_vars_chr[3])))) %>%
+      dplyr::ungroup() %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) <=
+                                           end_date_dtm) %>% add_temporal_vars(date_var_1L_chr = date_var_1L_chr,
+                                                                               fiscal_start_1L_int = fiscal_start_1L_int, temporal_vars_chr = temporal_vars_chr)
+    X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>% dplyr::bind_rows(separations_tb) %>%
+      dplyr::arrange(!!rlang::sym(uid_1L_chr), !!rlang::sym(date_var_1L_chr)) %>%
       dplyr::select(tidyselect::all_of(c(uid_1L_chr, date_var_1L_chr,
-                                         setdiff(names(X_Ready4useDyad@ds_tb), c(uid_1L_chr, date_var_1L_chr, activity_var_1L_chr, episodes_vars_chr[2], metrics_chr, c(episodes_vars_chr[3], episodes_vars_chr[1]), paste0(prefix_1L_chr, c(metrics_chr, episodes_vars_chr[2:3])), temporal_vars_chr)),
-                                         c(activity_var_1L_chr, episodes_vars_chr[2], metrics_chr, c(episodes_vars_chr[3], episodes_vars_chr[1]), paste0(prefix_1L_chr, c(episodes_vars_chr[2], metrics_chr, episodes_vars_chr[3])), temporal_vars_chr))))
-    if(inherits(data_xx,"Ready4useDyad")){
+                                         setdiff(names(X_Ready4useDyad@ds_tb), c(uid_1L_chr,
+                                                                                 date_var_1L_chr, activity_var_1L_chr, episodes_vars_chr[2],
+                                                                                 metrics_chr, c(episodes_vars_chr[3], episodes_vars_chr[1]),
+                                                                                 paste0(prefix_1L_chr, c(metrics_chr, episodes_vars_chr[2:3])),
+                                                                                 temporal_vars_chr)), c(activity_var_1L_chr,
+                                                                                                        episodes_vars_chr[2], metrics_chr, c(episodes_vars_chr[3],
+                                                                                                                                             episodes_vars_chr[1]), paste0(prefix_1L_chr,
+                                                                                                                                                                           c(episodes_vars_chr[2], metrics_chr, episodes_vars_chr[3])),
+                                                                                                        temporal_vars_chr))))
+    if (inherits(data_xx, "Ready4useDyad")) {
       X_Ready4useDyad <- ready4use::add_dictionary(X_Ready4useDyad,
-                                        new_cases_r3 = ready4use::ready4use_dictionary(ready4use::make_pt_ready4use_dictionary(var_nm_chr = c(episodes_vars_chr, paste0(prefix_1L_chr, episodes_vars_chr[2:3])),
-                                                                                                                               var_ctg_chr = ready4::get_from_lup_obj(X_Ready4useDyad@dictionary_r3, match_var_nm_1L_chr = "var_nm_chr", match_value_xx = metrics_chr[1], target_var_nm_1L_chr = "var_ctg_chr"),
-                                                                                                                               var_desc_chr = c(episodes_vars_chr,paste0(prefix_1L_chr, episodes_vars_chr[2:3])),
-                                                                                                                               var_type_chr = "numeric")))
+                                                   new_cases_r3 = ready4use::ready4use_dictionary(ready4use::make_pt_ready4use_dictionary(var_nm_chr = c(episodes_vars_chr,
+                                                                                                                                                         paste0(prefix_1L_chr, episodes_vars_chr[2:3])),
+                                                                                                                                          var_ctg_chr = ready4::get_from_lup_obj(X_Ready4useDyad@dictionary_r3,
+                                                                                                                                                                                 match_var_nm_1L_chr = "var_nm_chr", match_value_xx = metrics_chr[1],
+                                                                                                                                                                                 target_var_nm_1L_chr = "var_ctg_chr"), var_desc_chr = c(episodes_vars_chr,
+                                                                                                                                                                                                                                         paste0(prefix_1L_chr, episodes_vars_chr[2:3])),
+                                                                                                                                          var_type_chr = "numeric")))
     }
   }
-  if(inherits(data_xx,"Ready4useDyad")){
+  if (inherits(data_xx, "Ready4useDyad")) {
     data_xx <- X_Ready4useDyad
-  }else{
+  }
+  else {
     data_xx <- X_Ready4useDyad@ds_tb
   }
   return(data_xx)
@@ -264,57 +287,63 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
     stats::setNames(names(ts_models_ls$mabels_ls))
   return(ts_models_ls)
 }
-add_new_uid <- function(data_tb,
-                        uid_vars_chr,
-                        uid_pfx_1L_chr,
-                        arrange_by_1L_chr = character(0),
-                        drop_old_uids_1L_lgl = FALSE,
-                        new_uid_var_1L_chr = "UID",
-                        imputed_uid_pfx_chr = "UNK",
-                        place_first_1L_lgl = TRUE,
-                        recode_1L_lgl = FALSE,
-                        recode_pfx_1L_chr = "Person_"
-){
+add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0), arrange_by_1L_chr = character(0),
+                         drop_old_uids_1L_lgl = FALSE, new_uid_var_1L_chr = "UID",
+                         imputed_uid_pfx_chr = "UNK", place_first_1L_lgl = TRUE, recode_1L_lgl = FALSE,
+                         recode_pfx_1L_chr = "Person_") {
 
-  test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>% dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na), imputed_uid_pfx_chr)), msg = "Prefix for imputed identifiers must not be the same as the prefix used for the secondary identifier")
-  if(length(uid_vars_chr)>1){
-    test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>% dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na), uid_pfx_1L_chr)), msg = "Secondary identifier variable must not have same prefix as used for primary identifier")
-    test_1L_lgl <- assertthat::assert_that(!identical(imputed_uid_pfx_chr, uid_pfx_1L_chr), msg = "Prefix for imputed identifiers must be the same as the prefix used for the primary identifier")
-    uid_lup <- data_tb %>% dplyr::select(tidyselect::all_of(uid_vars_chr[1:2])) %>% tidyr::drop_na()
-    data_tb <- data_tb %>%
-      dplyr::mutate(!!rlang::sym(new_uid_var_1L_chr) := !!rlang::sym(uid_vars_chr[1]) %>%
-                      purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]), ~ifelse(is.na(.x),
-                                                                             ifelse(.y %in% (uid_lup %>% dplyr::pull(uid_vars_chr[2])),
-                                                                                    ready4::get_from_lup_obj(uid_lup,
-                                                                                                             match_var_nm_1L_chr = uid_vars_chr[2],
-                                                                                                             match_value_xx = .y,
-                                                                                                             target_var_nm_1L_chr = uid_vars_chr[1]),
-                                                                                    NA_character_),
-                                                                             .x)
-                      )) %>%
-      dplyr::mutate(!!rlang::sym(new_uid_var_1L_chr) := dplyr::case_when(is.na(!!rlang::sym(new_uid_var_1L_chr)) ~ !!rlang::sym(uid_vars_chr[1]) %>% purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]), ~ifelse(is.na(.x),.y,.x)),
-                                                                         T ~ !!rlang::sym(new_uid_var_1L_chr)))
+  if (length(uid_vars_chr) > 1) {
+    test_1L_lgl <- assertthat::assert_that(!identical(uid_pfx_1L_chr, character(0)), msg = "Value must be supplied for uid_pfx_1L_chr when more than one uid variable supplied.")
+    test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>%
+                                                             dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na),
+                                                           imputed_uid_pfx_chr)), msg = "Prefix for imputed identifiers must not be the same as the prefix used for the secondary identifier")
+    test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>%
+                                                             dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na),
+                                                           uid_pfx_1L_chr)), msg = "Secondary identifier variable must not have same prefix as used for primary identifier")
+    test_1L_lgl <- assertthat::assert_that(!identical(imputed_uid_pfx_chr,
+                                                      uid_pfx_1L_chr), msg = "Prefix for imputed identifiers must be the same as the prefix used for the primary identifier")
+    uid_lup <- data_tb %>% dplyr::select(tidyselect::all_of(uid_vars_chr[1:2])) %>%
+      tidyr::drop_na()
+    data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(new_uid_var_1L_chr),
+                                              !!rlang::sym(uid_vars_chr[1]) %>% purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]),
+                                                                                                ~ifelse(is.na(.x), ifelse(.y %in% (uid_lup %>%
+                                                                                                                                     dplyr::pull(uid_vars_chr[2])), ready4::get_from_lup_obj(uid_lup,
+                                                                                                                                                                                             match_var_nm_1L_chr = uid_vars_chr[2], match_value_xx = .y,
+                                                                                                                                                                                             target_var_nm_1L_chr = uid_vars_chr[1]), NA_character_),
+                                                                                                        .x)))) %>% dplyr::mutate(`:=`(!!rlang::sym(new_uid_var_1L_chr),
+                                                                                                                                      dplyr::case_when(is.na(!!rlang::sym(new_uid_var_1L_chr)) ~
+                                                                                                                                                         !!rlang::sym(uid_vars_chr[1]) %>% purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]),
+                                                                                                                                                                                                           ~ifelse(is.na(.x), .y, .x)), T ~ !!rlang::sym(new_uid_var_1L_chr))))
+  }
+  if(!new_uid_var_1L_chr %in% names(data_tb)){
+    data_tb <- data_tb %>% dplyr::mutate(!!rlang::sym(new_uid_var_1L_chr) := !!rlang::sym(uid_vars_chr[1]))
   }
   complete_ids_tb <- data_tb %>% dplyr::filter(!is.na(!!rlang::sym(new_uid_var_1L_chr)))
   imputed_ids_tb <- list(data_tb %>% dplyr::filter(is.na(!!rlang::sym(new_uid_var_1L_chr)))) %>%
-    youthvars::add_uids_to_tbs_ls(prefix_1L_chr = imputed_uid_pfx_chr, id_var_nm_1L_chr = new_uid_var_1L_chr) %>% purrr::pluck(1)
+    youthvars::add_uids_to_tbs_ls(prefix_1L_chr = imputed_uid_pfx_chr,
+                                  id_var_nm_1L_chr = new_uid_var_1L_chr) %>% purrr::pluck(1)
   data_tb <- dplyr::bind_rows(complete_ids_tb, imputed_ids_tb)
-  if(drop_old_uids_1L_lgl){
+  if (drop_old_uids_1L_lgl) {
     data_tb <- dplyr::select(data_tb, -tidyselect::all_of(uid_vars_chr))
   }
-  if(!identical(arrange_by_1L_chr, character(0))){
+  if (!identical(arrange_by_1L_chr, character(0))) {
     data_tb <- dplyr::arrange(data_tb, !!rlang::sym(arrange_by_1L_chr))
   }
-  if(place_first_1L_lgl){
-    data_tb <- data_tb  %>% dplyr::select(!!rlang::sym(new_uid_var_1L_chr), dplyr::everything())
+  if (place_first_1L_lgl) {
+    data_tb <- data_tb %>% dplyr::select(!!rlang::sym(new_uid_var_1L_chr),
+                                         dplyr::everything())
   }
-  if(recode_1L_lgl){
-    unique_chr <- data_tb %>% dplyr::pull(!!rlang::sym(new_uid_var_1L_chr)) %>% unique()
+  if (recode_1L_lgl) {
+    unique_chr <- data_tb %>% dplyr::pull(!!rlang::sym(new_uid_var_1L_chr)) %>%
+      unique()
     correspondences_r3 <- ready4show:::ready4show_correspondences() %>%
       ready4show::renew.ready4show_correspondences(old_nms_chr = unique_chr,
-                                                   new_nms_chr = paste0(recode_pfx_1L_chr,sprintf(paste0("%0",length(unique_chr) %>% nchar() -1,"d"), 1:length(unique_chr))))
-    data_tb <- data_tb %>%
-      dplyr::mutate(!!rlang::sym(new_uid_var_1L_chr) := !!rlang::sym(new_uid_var_1L_chr) %>% purrr::map_chr(~ready4::get_from_lup_obj(correspondences_r3, match_var_nm_1L_chr = "old_nms_chr", match_value_xx = .x, target_var_nm_1L_chr = "new_nms_chr")))
+                                                   new_nms_chr = paste0(recode_pfx_1L_chr, sprintf(paste0("%0",
+                                                                                                          length(unique_chr) %>% nchar() - 1, "d"), 1:length(unique_chr))))
+    data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(new_uid_var_1L_chr),
+                                              !!rlang::sym(new_uid_var_1L_chr) %>% purrr::map_chr(~ready4::get_from_lup_obj(correspondences_r3,
+                                                                                                                            match_var_nm_1L_chr = "old_nms_chr", match_value_xx = .x,
+                                                                                                                            target_var_nm_1L_chr = "new_nms_chr"))))
   }
   return(data_tb)
 }
@@ -454,15 +483,27 @@ add_temporal_vars <- function(data_tb,
                                                  })
   return(data_tb)
 }
-add_tenure <- function(data_tb,
-                       date_var_1L_chr = "Date",
-                       tenure_var_1L_chr = "Tenure",
-                       uid_var_1L_chr = "UID",
-                       unit_1L_chr = "year"){
-  data_tb <- data_tb %>%
-    dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>%
-    dplyr::mutate(!!rlang::sym(tenure_var_1L_chr) := (!!rlang::sym(date_var_1L_chr) - dplyr::first(!!rlang::sym(date_var_1L_chr))) %>% lubridate::time_length(unit = unit_1L_chr)) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(!!rlang::sym(uid_var_1L_chr), !!rlang::sym(date_var_1L_chr), !!rlang::sym(tenure_var_1L_chr), dplyr::everything())
-  return(data_tb)
+add_tenure <- function (data_xx, date_var_1L_chr = "Date", tenure_ctg_1L_chr = "Temporal", tenure_var_1L_chr = "Tenure",
+                        uid_var_1L_chr = "UID", unit_1L_chr = "year") {
+  ###
+  X_Ready4useDyad <- transform_data_fmt(data_xx, type_1L_chr = "input")
+  X_Ready4useDyad <- renewSlot(X_Ready4useDyad,"ds_tb",
+                               X_Ready4useDyad@ds_tb %>%
+                                 dplyr::arrange(!!rlang::sym(uid_var_1L_chr), !!rlang::sym(date_var_1L_chr)) %>%
+                                 dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>%
+                                 dplyr::mutate(`:=`(!!rlang::sym(tenure_var_1L_chr), (!!rlang::sym(date_var_1L_chr) -
+                                                                                        dplyr::first(!!rlang::sym(date_var_1L_chr))) %>%
+                                                      lubridate::time_length(unit = unit_1L_chr))) %>%
+                                 dplyr::ungroup() %>% dplyr::select(!!rlang::sym(uid_var_1L_chr),
+                                                                    !!rlang::sym(date_var_1L_chr), !!rlang::sym(tenure_var_1L_chr),
+                                                                    dplyr::everything()))
+  X_Ready4useDyad <- X_Ready4useDyad %>%
+    ready4use::add_dictionary(new_cases_r3 = ready4use_dictionary() %>%
+                                ready4use::renew.ready4use_dictionary(var_nm_chr = tenure_var_1L_chr,
+                                                                      var_ctg_chr = tenure_ctg_1L_chr,
+                                                                      var_desc_chr = tenure_var_1L_chr,
+                                                                      var_type_chr = "numeric"))
+  data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
+  ###
+  return(data_xx)
 }
