@@ -62,15 +62,6 @@ write_to_tidy_pkg(z$x_ready4fun_manifest,
                   examples_chr = character(0),
                   project_1L_chr = "Framework",
                   suggest_chr = "pkgload")
-paste0(".github/workflows/", c("pkgdown.yaml", "R-CMD-check.yaml")) %>%
-  purrr::walk(~{
-    path_1L_chr <- .x
-    readLines(path_1L_chr)[-(which(readLines(path_1L_chr) %>% startsWith("    # Addresses issue with incompatibility between libcurl4-gnutls-dev and libcurl4-openssl-dev")) %>%
-                    purrr::map(~.x:(.x+6)) %>% purrr::flatten_int())] %>%
-      writeLines(path_1L_chr)
-  })
-
-
 # readLines("_pkgdown.yml") %>%
 #   stringr::str_replace_all("  - text: Model", "  - text: Framework & Model") %>%
 #   writeLines(con = "_pkgdown.yml")
@@ -78,3 +69,10 @@ usethis::use_dev_package("ready4show")
 usethis::use_dev_package("youthu")
 write_citation_fl(z$x_ready4fun_manifest)
 # devtools::build_vignettes()
+paste0(".github/workflows/", c("pkgdown.yaml", "R-CMD-check.yaml")) %>%
+  purrr::walk(~{
+    path_1L_chr <- .x
+    readLines(path_1L_chr)[-(which(readLines(path_1L_chr) %>% startsWith("    # Addresses issue with incompatibility between libcurl4-gnutls-dev and libcurl4-openssl-dev")) %>%
+                               purrr::map(~.x:(.x+6)) %>% purrr::flatten_int())] %>%
+      writeLines(path_1L_chr)
+  })
