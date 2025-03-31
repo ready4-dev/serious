@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">serious</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9009</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9010</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,7 +41,6 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_episodes</span><span class="op">(</span></span>
 <span>  <span class="va">data_xx</span>,</span>
 <span>  <span class="va">separation_after_dbl</span>,</span>
-<span>  index_1L_int <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  active_var_1L_chr <span class="op">=</span> <span class="st">"Active"</span>,</span>
 <span>  activity_var_1L_chr <span class="op">=</span> <span class="st">"Activity"</span>,</span>
 <span>  date_tfmn_fn <span class="op">=</span> <span class="fu">lubridate</span><span class="fu">::</span><span class="va"><a href="https://lubridate.tidyverse.org/reference/ymd.html" class="external-link">ymd</a></span>,</span>
@@ -51,6 +50,7 @@
 <span>  episodes_vars_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  exclude_chr <span class="op">=</span> <span class="st">"Duration"</span>,</span>
 <span>  fiscal_start_1L_int <span class="op">=</span> <span class="fl">7L</span>,</span>
+<span>  index_1L_int <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  metrics_chr <span class="op">=</span> <span class="fu"><a href="make_metric_vars.html">make_metric_vars</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  prefix_1L_chr <span class="op">=</span> <span class="st">"Cumulative"</span>,</span>
 <span>  separations_var_1L_chr <span class="op">=</span> <span class="st">"Separations"</span>,</span>
@@ -70,10 +70,6 @@
 
 <dt id="arg-separation-after-dbl">separation_after_dbl<a class="anchor" aria-label="anchor" href="#arg-separation-after-dbl"></a></dt>
 <dd><p>Separation after (a double vector)</p></dd>
-
-
-<dt id="arg-index-l-int">index_1L_int<a class="anchor" aria-label="anchor" href="#arg-index-l-int"></a></dt>
-<dd><p>Index (an integer vector of length one), Default: integer(0)</p></dd>
 
 
 <dt id="arg-active-var-l-chr">active_var_1L_chr<a class="anchor" aria-label="anchor" href="#arg-active-var-l-chr"></a></dt>
@@ -110,6 +106,10 @@
 
 <dt id="arg-fiscal-start-l-int">fiscal_start_1L_int<a class="anchor" aria-label="anchor" href="#arg-fiscal-start-l-int"></a></dt>
 <dd><p>Fiscal start (an integer vector of length one), Default: 7</p></dd>
+
+
+<dt id="arg-index-l-int">index_1L_int<a class="anchor" aria-label="anchor" href="#arg-index-l-int"></a></dt>
+<dd><p>Index (an integer vector of length one), Default: integer(0)</p></dd>
 
 
 <dt id="arg-metrics-chr">metrics_chr<a class="anchor" aria-label="anchor" href="#arg-metrics-chr"></a></dt>
