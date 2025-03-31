@@ -31,12 +31,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Matthew Hamilton \email{matthew.hamilton1@monash.edu} (\href{https://orcid.org/0000-0001-7407-9194}{ORCID})
-
-Other contributors:
-\itemize{
-  \item Monash University [copyright holder]
-}
+\strong{Maintainer}: Matthew Hamilton \email{matthew.hamilton1@monash.edu} (\href{https://orcid.org/0000-0001-7407-9194}{ORCID}) [copyright holder]
 
 }
 \keyword{internal}

@@ -10,9 +10,7 @@ x <- ready4fun::make_pkg_desc_ls(pkg_title_1L_chr = "Develop, Test and Apply Tim
                                  pkg_desc_1L_chr = "Tools for undertaking time series analysis of mental health services datasets developed with the ready4 framework (https://ready4-dev.github.io/ready4/).
                             This development version of the serious package has been made available as part of the process of testing and documenting the package.
                             If you have any questions, please contact the authors (matthew.hamilton1@monash.edu).",
-                                 authors_prsn = c(utils::person(given = "Matthew",family = "Hamilton",email = "matthew.hamilton1@monash.edu", role = c("aut", "cre"), comment = c(ORCID = "0000-0001-7407-9194")),
-                                                  utils::person("Monash University", role = c("cph"))
-                                 ),
+                                 authors_prsn = c(utils::person(given = "Matthew",family = "Hamilton",email = "matthew.hamilton1@monash.edu", role = c("aut", "cph","cre"), comment = c(ORCID = "0000-0001-7407-9194"))),
                                  urls_chr = c("https://ready4-dev.github.io/serious/",
                                               "https://github.com/ready4-dev/serious",
                                               "https://ready4-dev.github.io/ready4/")) %>%
@@ -22,7 +20,7 @@ x <- ready4fun::make_pkg_desc_ls(pkg_title_1L_chr = "Develop, Test and Apply Tim
   ),
   build_ignore_ls = ready4fun::make_build_ignore_ls(file_nms_chr = c("initial_setup.R")),
   check_type_1L_chr = "ready4",
-  copyright_holders_chr = "Monash University",
+  copyright_holders_chr = "Matthew Hamilton",
   custom_dmt_ls = ready4fun::make_custom_dmt_ls(user_manual_fns_chr = c("get_medicare_data",
                                                                         "get_raw_erp_data",
                                                                         "get_tsibble",

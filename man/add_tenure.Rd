@@ -7,7 +7,7 @@
 add_tenure(
   data_xx,
   date_var_1L_chr = "Date",
-  tenure_ctg_1L_chr = "Temporal",
+  dict_by_ctg_1L_chr = FALSE,
   tenure_var_1L_chr = "Tenure",
   uid_var_1L_chr = "UID",
   unit_1L_chr = "year"
@@ -18,7 +18,7 @@ add_tenure(
 
 \item{date_var_1L_chr}{Date variable (a character vector of length one), Default: 'Date'}
 
-\item{tenure_ctg_1L_chr}{Tenure category (a character vector of length one), Default: 'Temporal'}
+\item{dict_by_ctg_1L_chr}{Dictionary by category (a character vector of length one), Default: FALSE}
 
 \item{tenure_var_1L_chr}{Tenure variable (a character vector of length one), Default: 'Tenure'}
 

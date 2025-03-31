@@ -7,12 +7,13 @@
 add_new_uid(
   data_tb,
   uid_vars_chr,
-  uid_pfx_1L_chr = character(0),
+  uid_pfx_1L_chr,
   arrange_by_1L_chr = character(0),
   drop_old_uids_1L_lgl = FALSE,
   new_uid_var_1L_chr = "UID",
   imputed_uid_pfx_chr = "UNK",
   place_first_1L_lgl = TRUE,
+  scramble_1L_lgl = FALSE,
   recode_1L_lgl = FALSE,
   recode_pfx_1L_chr = "Person_"
 )
@@ -22,7 +23,7 @@ add_new_uid(
 
 \item{uid_vars_chr}{Unique identifier variables (a character vector)}
 
-\item{uid_pfx_1L_chr}{Unique identifier prefix (a character vector of length one), Default: character(0)}
+\item{uid_pfx_1L_chr}{Unique identifier prefix (a character vector of length one)}
 
 \item{arrange_by_1L_chr}{Arrange by (a character vector of length one), Default: character(0)}
 
@@ -33,6 +34,8 @@ add_new_uid(
 \item{imputed_uid_pfx_chr}{Imputed unique identifier prefix (a character vector), Default: 'UNK'}
 
 \item{place_first_1L_lgl}{Place first (a logical vector of length one), Default: TRUE}
+
+\item{scramble_1L_lgl}{Scramble (a logical vector of length one), Default: FALSE}
 
 \item{recode_1L_lgl}{Recode (a logical vector of length one), Default: FALSE}
 

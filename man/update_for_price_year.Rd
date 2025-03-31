@@ -6,18 +6,17 @@
 \usage{
 update_for_price_year(
   data_tb,
-  cost_vars_chr = character(0),
   cost_current_1L_chr = "Cost",
   cost_constant_1L_chr = "Cost",
   price_indices_dbl = numeric(0),
   price_ref_1L_int = 1L,
-  time_var_1L_chr = "FiscalYear"
+  time_var_1L_chr = "FiscalYear",
+  total_1L_chr = character(0),
+  years_are_cols_1L_lgl = F
 )
 }
 \arguments{
 \item{data_tb}{Data (a tibble)}
-
-\item{cost_vars_chr}{Cost variables (a character vector), Default: character(0)}
 
 \item{cost_current_1L_chr}{Cost current (a character vector of length one), Default: 'Cost'}
 
@@ -28,6 +27,10 @@ update_for_price_year(
 \item{price_ref_1L_int}{Price reference (an integer vector of length one), Default: 1}
 
 \item{time_var_1L_chr}{Time variable (a character vector of length one), Default: 'FiscalYear'}
+
+\item{total_1L_chr}{Total (a character vector of length one), Default: character(0)}
+
+\item{years_are_cols_1L_lgl}{Years are columns (a logical vector of length one), Default: F}
 }
 \value{
 Data (a tibble)

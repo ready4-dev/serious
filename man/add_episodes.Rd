@@ -7,7 +7,6 @@
 add_episodes(
   data_xx,
   separation_after_dbl,
-  index_1L_int = integer(0),
   active_var_1L_chr = "Active",
   activity_var_1L_chr = "Activity",
   date_tfmn_fn = lubridate::ymd,
@@ -17,6 +16,7 @@ add_episodes(
   episodes_vars_chr = character(0),
   exclude_chr = "Duration",
   fiscal_start_1L_int = 7L,
+  index_1L_int = integer(0),
   metrics_chr = make_metric_vars(),
   prefix_1L_chr = "Cumulative",
   separations_var_1L_chr = "Separations",
@@ -29,8 +29,6 @@ add_episodes(
 \item{data_xx}{Data (an output object of multiple potential types)}
 
 \item{separation_after_dbl}{Separation after (a double vector)}
-
-\item{index_1L_int}{Index (an integer vector of length one), Default: integer(0)}
 
 \item{active_var_1L_chr}{Active variable (a character vector of length one), Default: 'Active'}
 
@@ -49,6 +47,8 @@ add_episodes(
 \item{exclude_chr}{Exclude (a character vector), Default: 'Duration'}
 
 \item{fiscal_start_1L_int}{Fiscal start (an integer vector of length one), Default: 7}
+
+\item{index_1L_int}{Index (an integer vector of length one), Default: integer(0)}
 
 \item{metrics_chr}{Metrics (a character vector), Default: make_metric_vars()}
 

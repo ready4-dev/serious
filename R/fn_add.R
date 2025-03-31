@@ -229,7 +229,6 @@ add_disengaged <- function (data_xx, date_1L_chr, category_1L_chr = "Healthcare"
 #' @description add_episodes() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add episodes. The function returns Data (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
 #' @param separation_after_dbl Separation after (a double vector)
-#' @param index_1L_int Index (an integer vector of length one), Default: integer(0)
 #' @param active_var_1L_chr Active variable (a character vector of length one), Default: 'Active'
 #' @param activity_var_1L_chr Activity variable (a character vector of length one), Default: 'Activity'
 #' @param date_tfmn_fn Date transformation (a function), Default: lubridate::ymd
@@ -239,6 +238,7 @@ add_disengaged <- function (data_xx, date_1L_chr, category_1L_chr = "Healthcare"
 #' @param episodes_vars_chr Episodes variables (a character vector), Default: character(0)
 #' @param exclude_chr Exclude (a character vector), Default: 'Duration'
 #' @param fiscal_start_1L_int Fiscal start (an integer vector of length one), Default: 7
+#' @param index_1L_int Index (an integer vector of length one), Default: integer(0)
 #' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
 #' @param prefix_1L_chr Prefix (a character vector of length one), Default: 'Cumulative'
 #' @param separations_var_1L_chr Separations variable (a character vector of length one), Default: 'Separations'
@@ -258,11 +258,11 @@ add_disengaged <- function (data_xx, date_1L_chr, category_1L_chr = "Healthcare"
 #' @importFrom tidyselect all_of
 #' @importFrom ready4 get_from_lup_obj
 #' @keywords internal
-add_episodes <- function (data_xx, separation_after_dbl, index_1L_int = integer(0), 
-    active_var_1L_chr = "Active", activity_var_1L_chr = "Activity", 
-    date_tfmn_fn = lubridate::ymd, date_var_1L_chr = "Date", 
-    end_date_dtm = NULL, episode_var_1L_chr = "Episodes", episodes_vars_chr = character(0), 
-    exclude_chr = "Duration", fiscal_start_1L_int = 7L, metrics_chr = make_metric_vars(), 
+add_episodes <- function (data_xx, separation_after_dbl, active_var_1L_chr = "Active", 
+    activity_var_1L_chr = "Activity", date_tfmn_fn = lubridate::ymd, 
+    date_var_1L_chr = "Date", end_date_dtm = NULL, episode_var_1L_chr = "Episodes", 
+    episodes_vars_chr = character(0), exclude_chr = "Duration", 
+    fiscal_start_1L_int = 7L, index_1L_int = integer(0), metrics_chr = make_metric_vars(), 
     prefix_1L_chr = "Cumulative", separations_var_1L_chr = "Separations", 
     temporal_vars_chr = make_temporal_vars(), uid_1L_chr = "UID", 
     unit_1L_chr = "month") 
@@ -285,10 +285,11 @@ add_episodes <- function (data_xx, separation_after_dbl, index_1L_int = integer(
             purrr::reduce(.init = X_Ready4useDyad, ~.x %>% add_episodes(separation_after_dbl = separation_after_dbl, 
                 active_var_1L_chr = active_var_1L_chr, activity_var_1L_chr = activity_var_1L_chr, 
                 date_tfmn_fn = date_tfmn_fn, date_var_1L_chr = date_var_1L_chr, 
-                end_date_dtm = end_date_dtm, episodes_vars_chr = episodes_vars_ls[[.y]], 
-                exclude_chr = exclude_chr, index_1L_int = .y, 
-                fiscal_start_1L_int = fiscal_start_1L_int, metrics_chr = metrics_chr, 
-                prefix_1L_chr = prefix_1L_chr, separations_var_1L_chr = separations_var_1L_chr, 
+                end_date_dtm = end_date_dtm, episode_var_1L_chr = episode_var_1L_chr, 
+                episodes_vars_chr = episodes_vars_ls[[.y]], exclude_chr = exclude_chr, 
+                fiscal_start_1L_int = fiscal_start_1L_int, index_1L_int = .y, 
+                metrics_chr = metrics_chr, prefix_1L_chr = prefix_1L_chr, 
+                separations_var_1L_chr = separations_var_1L_chr, 
                 temporal_vars_chr = temporal_vars_chr, uid_1L_chr = uid_1L_chr, 
                 unit_1L_chr = unit_1L_chr))
     }
@@ -429,12 +430,13 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
 #' @description add_new_uid() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add new unique identifier. The function returns Data (a tibble).
 #' @param data_tb Data (a tibble)
 #' @param uid_vars_chr Unique identifier variables (a character vector)
-#' @param uid_pfx_1L_chr Unique identifier prefix (a character vector of length one), Default: character(0)
+#' @param uid_pfx_1L_chr Unique identifier prefix (a character vector of length one)
 #' @param arrange_by_1L_chr Arrange by (a character vector of length one), Default: character(0)
 #' @param drop_old_uids_1L_lgl Drop old unique identifiers (a logical vector of length one), Default: FALSE
 #' @param new_uid_var_1L_chr New unique identifier variable (a character vector of length one), Default: 'UID'
 #' @param imputed_uid_pfx_chr Imputed unique identifier prefix (a character vector), Default: 'UNK'
 #' @param place_first_1L_lgl Place first (a logical vector of length one), Default: TRUE
+#' @param scramble_1L_lgl Scramble (a logical vector of length one), Default: FALSE
 #' @param recode_1L_lgl Recode (a logical vector of length one), Default: FALSE
 #' @param recode_pfx_1L_chr Recode prefix (a character vector of length one), Default: 'Person_'
 #' @return Data (a tibble)
@@ -450,14 +452,12 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
 #' @importFrom youthvars add_uids_to_tbs_ls
 #' @importFrom ready4show ready4show_correspondences renew.ready4show_correspondences
 #' @keywords internal
-add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0), 
-    arrange_by_1L_chr = character(0), drop_old_uids_1L_lgl = FALSE, 
-    new_uid_var_1L_chr = "UID", imputed_uid_pfx_chr = "UNK", 
-    place_first_1L_lgl = TRUE, recode_1L_lgl = FALSE, recode_pfx_1L_chr = "Person_") 
+add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr, arrange_by_1L_chr = character(0), 
+    drop_old_uids_1L_lgl = FALSE, new_uid_var_1L_chr = "UID", 
+    imputed_uid_pfx_chr = "UNK", place_first_1L_lgl = TRUE, scramble_1L_lgl = FALSE, 
+    recode_1L_lgl = FALSE, recode_pfx_1L_chr = "Person_") 
 {
     if (length(uid_vars_chr) > 1) {
-        test_1L_lgl <- assertthat::assert_that(!identical(uid_pfx_1L_chr, 
-            character(0)), msg = "Value must be supplied for uid_pfx_1L_chr when more than one uid variable supplied.")
         test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>% 
             dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na), 
             imputed_uid_pfx_chr)), msg = "Prefix for imputed identifiers must not be the same as the prefix used for the secondary identifier")
@@ -479,7 +479,7 @@ add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0),
                 !!rlang::sym(uid_vars_chr[1]) %>% purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]), 
                   ~ifelse(is.na(.x), .y, .x)), T ~ !!rlang::sym(new_uid_var_1L_chr))))
     }
-    if (!new_uid_var_1L_chr %in% names(data_tb)) {
+    else {
         data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(new_uid_var_1L_chr), 
             !!rlang::sym(uid_vars_chr[1])))
     }
@@ -501,6 +501,9 @@ add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0),
     if (recode_1L_lgl) {
         unique_chr <- data_tb %>% dplyr::pull(!!rlang::sym(new_uid_var_1L_chr)) %>% 
             unique()
+        if (scramble_1L_lgl) {
+            unique_chr <- unique_chr %>% sample()
+        }
         correspondences_r3 <- ready4show:::ready4show_correspondences() %>% 
             ready4show::renew.ready4show_correspondences(old_nms_chr = unique_chr, 
                 new_nms_chr = paste0(recode_pfx_1L_chr, sprintf(paste0("%0", 
@@ -752,34 +755,48 @@ add_temporal_vars <- function (data_tb, date_var_1L_chr = "Date", fiscal_start_1
 #' @description add_tenure() is an Add function that updates an object by adding new values to new or empty fields. Specifically, this function implements an algorithm to add tenure. The function returns Data (an output object of multiple potential types).
 #' @param data_xx Data (an output object of multiple potential types)
 #' @param date_var_1L_chr Date variable (a character vector of length one), Default: 'Date'
-#' @param tenure_ctg_1L_chr Tenure category (a character vector of length one), Default: 'Temporal'
+#' @param dict_by_ctg_1L_chr Dictionary by category (a character vector of length one), Default: FALSE
 #' @param tenure_var_1L_chr Tenure variable (a character vector of length one), Default: 'Tenure'
 #' @param uid_var_1L_chr Unique identifier variable (a character vector of length one), Default: 'UID'
 #' @param unit_1L_chr Unit (a character vector of length one), Default: 'year'
 #' @return Data (an output object of multiple potential types)
 #' @rdname add_tenure
 #' @export 
-#' @importFrom dplyr arrange group_by mutate first ungroup select everything
+#' @importFrom ready4use Ready4useDyad renew.ready4use_dictionary
+#' @importFrom dplyr group_by mutate first ungroup select everything filter arrange
 #' @importFrom rlang sym
 #' @importFrom lubridate time_length
-#' @importFrom ready4use add_dictionary renew.ready4use_dictionary
 #' @keywords internal
-add_tenure <- function (data_xx, date_var_1L_chr = "Date", tenure_ctg_1L_chr = "Temporal", 
+add_tenure <- function (data_xx, date_var_1L_chr = "Date", dict_by_ctg_1L_chr = FALSE, 
     tenure_var_1L_chr = "Tenure", uid_var_1L_chr = "UID", unit_1L_chr = "year") 
 {
-    X_Ready4useDyad <- transform_data_fmt(data_xx, type_1L_chr = "input")
-    X_Ready4useDyad <- renewSlot(X_Ready4useDyad, "ds_tb", X_Ready4useDyad@ds_tb %>% 
-        dplyr::arrange(!!rlang::sym(uid_var_1L_chr), !!rlang::sym(date_var_1L_chr)) %>% 
-        dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>% dplyr::mutate(`:=`(!!rlang::sym(tenure_var_1L_chr), 
-        (!!rlang::sym(date_var_1L_chr) - dplyr::first(!!rlang::sym(date_var_1L_chr))) %>% 
+    if (inherits(data_xx, "Ready4useDyad")) {
+        X_Ready4useDyad <- data_xx
+    }
+    else {
+        X_Ready4useDyad <- ready4use::Ready4useDyad(ds_tb = data_xx)
+    }
+    X_Ready4useDyad@ds_tb <- X_Ready4useDyad@ds_tb %>% dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>% 
+        dplyr::mutate(`:=`(!!rlang::sym(tenure_var_1L_chr), (!!rlang::sym(date_var_1L_chr) - 
+            dplyr::first(!!rlang::sym(date_var_1L_chr))) %>% 
             lubridate::time_length(unit = unit_1L_chr))) %>% 
         dplyr::ungroup() %>% dplyr::select(!!rlang::sym(uid_var_1L_chr), 
         !!rlang::sym(date_var_1L_chr), !!rlang::sym(tenure_var_1L_chr), 
-        dplyr::everything()))
-    X_Ready4useDyad <- X_Ready4useDyad %>% ready4use::add_dictionary(new_cases_r3 = ready4use_dictionary() %>% 
-        ready4use::renew.ready4use_dictionary(var_nm_chr = tenure_var_1L_chr, 
-            var_ctg_chr = tenure_ctg_1L_chr, var_desc_chr = tenure_var_1L_chr, 
-            var_type_chr = "numeric"))
-    data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
+        dplyr::everything())
+    if (inherits(data_xx, "Ready4useDyad")) {
+        X_Ready4useDyad@dictionary_r3 <- X_Ready4useDyad@dictionary_r3 %>% 
+            ready4use::renew.ready4use_dictionary(new_cases_r3 = X_Ready4useDyad@dictionary_r3 %>% 
+                dplyr::filter(F) %>% dplyr::mutate(var_nm_chr = tenure_var_1L_chr, 
+                var_ctg_chr = "Temporal", var_desc_chr = "Service tenure", 
+                var_type_chr = "numeric"))
+        if (dict_by_ctg_1L_chr) {
+            X_Ready4useDyad@dictionary_r3 <- dplyr::arrange(X_Ready4useDyad@dictionary_r3, 
+                var_ctg_chr)
+        }
+        data_xx <- X_Ready4useDyad
+    }
+    else {
+        data_xx <- X_Ready4useDyad@ds_tb
+    }
     return(data_xx)
 }

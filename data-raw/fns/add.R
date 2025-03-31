@@ -141,19 +141,17 @@ add_disengaged <- function(data_xx,
   }
   return(data_xx)
 }
-add_episodes <- function (data_xx, separation_after_dbl, index_1L_int = integer(0),
+add_episodes <- function (data_xx, separation_after_dbl, # This remains problematic
                           active_var_1L_chr = "Active", activity_var_1L_chr = "Activity",
                           date_tfmn_fn = lubridate::ymd, date_var_1L_chr = "Date",
                           end_date_dtm = NULL, episode_var_1L_chr = "Episodes", episodes_vars_chr = character(0),
-                          exclude_chr = "Duration", fiscal_start_1L_int = 7L, metrics_chr = make_metric_vars(),
+                          exclude_chr = "Duration", fiscal_start_1L_int = 7L, index_1L_int = integer(0), metrics_chr = make_metric_vars(),
                           prefix_1L_chr = "Cumulative", separations_var_1L_chr = "Separations",
                           temporal_vars_chr = make_temporal_vars(), uid_1L_chr = "UID",
-                          unit_1L_chr = "month")
-{
+                          unit_1L_chr = "month"){
   if (inherits(data_xx, "Ready4useDyad")) {
     X_Ready4useDyad <- data_xx
-  }
-  else {
+  }  else {
     X_Ready4useDyad <- ready4use::Ready4useDyad(ds_tb = data_xx)
   }
   if (is.null(end_date_dtm)) {
@@ -165,12 +163,14 @@ add_episodes <- function (data_xx, separation_after_dbl, index_1L_int = integer(
                                            separations_var_1L_chr = separations_var_1L_chr,
                                            flatten_1L_lgl = F)
     X_Ready4useDyad <- 1:length(separation_after_dbl) %>%
-      purrr::reduce(.init = X_Ready4useDyad, ~.x %>% add_episodes(separation_after_dbl = separation_after_dbl,
-                                                                  active_var_1L_chr = active_var_1L_chr, activity_var_1L_chr = activity_var_1L_chr,
-                                                                  date_tfmn_fn = date_tfmn_fn, date_var_1L_chr = date_var_1L_chr,
-                                                                  end_date_dtm = end_date_dtm, episodes_vars_chr = episodes_vars_ls[[.y]], exclude_chr = exclude_chr,
-                                                                  index_1L_int = .y, fiscal_start_1L_int = fiscal_start_1L_int, metrics_chr = metrics_chr,
-                                                                  prefix_1L_chr = prefix_1L_chr, separations_var_1L_chr = separations_var_1L_chr, temporal_vars_chr = temporal_vars_chr, uid_1L_chr = uid_1L_chr,
+      purrr::reduce(.init = X_Ready4useDyad, ~.x %>% add_episodes(separation_after_dbl = separation_after_dbl, active_var_1L_chr = active_var_1L_chr, activity_var_1L_chr  = activity_var_1L_chr,
+
+                                                                  date_tfmn_fn = date_tfmn_fn, date_var_1L_chr = date_var_1L_chr ,
+                                                                  end_date_dtm = end_date_dtm, episode_var_1L_chr = episode_var_1L_chr, episodes_vars_chr = episodes_vars_ls[[.y]],
+                                                                  exclude_chr = exclude_chr, fiscal_start_1L_int = fiscal_start_1L_int, index_1L_int = .y,
+                                                                  metrics_chr = metrics_chr,
+                                                                  prefix_1L_chr = prefix_1L_chr, separations_var_1L_chr = separations_var_1L_chr,
+                                                                  temporal_vars_chr = temporal_vars_chr, uid_1L_chr = uid_1L_chr,
                                                                   unit_1L_chr = unit_1L_chr))
   }
   else {
@@ -287,21 +287,19 @@ add_fabels <- function (ts_models_ls, data_xx = NULL, periods_1L_int = integer(0
     stats::setNames(names(ts_models_ls$mabels_ls))
   return(ts_models_ls)
 }
-add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0), arrange_by_1L_chr = character(0),
+add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr, arrange_by_1L_chr = character(0),
                          drop_old_uids_1L_lgl = FALSE, new_uid_var_1L_chr = "UID",
-                         imputed_uid_pfx_chr = "UNK", place_first_1L_lgl = TRUE, recode_1L_lgl = FALSE,
-                         recode_pfx_1L_chr = "Person_") {
+                         imputed_uid_pfx_chr = "UNK", place_first_1L_lgl = TRUE, scramble_1L_lgl = FALSE, recode_1L_lgl = FALSE,
+                         recode_pfx_1L_chr = "Person_"){
 
   if (length(uid_vars_chr) > 1) {
-    test_1L_lgl <- assertthat::assert_that(!identical(uid_pfx_1L_chr, character(0)), msg = "Value must be supplied for uid_pfx_1L_chr when more than one uid variable supplied.")
     test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>%
                                                              dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na),
                                                            imputed_uid_pfx_chr)), msg = "Prefix for imputed identifiers must not be the same as the prefix used for the secondary identifier")
     test_1L_lgl <- assertthat::assert_that(!any(startsWith(data_tb %>%
                                                              dplyr::pull(uid_vars_chr[2]) %>% unique() %>% purrr::discard(is.na),
                                                            uid_pfx_1L_chr)), msg = "Secondary identifier variable must not have same prefix as used for primary identifier")
-    test_1L_lgl <- assertthat::assert_that(!identical(imputed_uid_pfx_chr,
-                                                      uid_pfx_1L_chr), msg = "Prefix for imputed identifiers must be the same as the prefix used for the primary identifier")
+    test_1L_lgl <- assertthat::assert_that(!identical(imputed_uid_pfx_chr, uid_pfx_1L_chr), msg = "Prefix for imputed identifiers must be the same as the prefix used for the primary identifier")
     uid_lup <- data_tb %>% dplyr::select(tidyselect::all_of(uid_vars_chr[1:2])) %>%
       tidyr::drop_na()
     data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(new_uid_var_1L_chr),
@@ -314,8 +312,13 @@ add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0), a
                                                                                                                                       dplyr::case_when(is.na(!!rlang::sym(new_uid_var_1L_chr)) ~
                                                                                                                                                          !!rlang::sym(uid_vars_chr[1]) %>% purrr::map2_chr(!!rlang::sym(uid_vars_chr[2]),
                                                                                                                                                                                                            ~ifelse(is.na(.x), .y, .x)), T ~ !!rlang::sym(new_uid_var_1L_chr))))
-  }
-  if(!new_uid_var_1L_chr %in% names(data_tb)){
+  }else{
+    # uid_lup <- data_tb %>%
+    #   dplyr::select(tidyselect::all_of(uid_vars_chr[1])) %>%
+    #   dplyr::distinct() %>%
+    #   list() %>%
+    #   youthvars::add_uids_to_tbs_ls(prefix_1L_chr = imputed_uid_pfx_chr,
+    #                                 id_var_nm_1L_chr = new_uid_var_1L_chr) %>% purrr::pluck(1)
     data_tb <- data_tb %>% dplyr::mutate(!!rlang::sym(new_uid_var_1L_chr) := !!rlang::sym(uid_vars_chr[1]))
   }
   complete_ids_tb <- data_tb %>% dplyr::filter(!is.na(!!rlang::sym(new_uid_var_1L_chr)))
@@ -336,6 +339,9 @@ add_new_uid <- function (data_tb, uid_vars_chr, uid_pfx_1L_chr = character(0), a
   if (recode_1L_lgl) {
     unique_chr <- data_tb %>% dplyr::pull(!!rlang::sym(new_uid_var_1L_chr)) %>%
       unique()
+    if(scramble_1L_lgl){
+      unique_chr <- unique_chr %>% sample()
+    }
     correspondences_r3 <- ready4show:::ready4show_correspondences() %>%
       ready4show::renew.ready4show_correspondences(old_nms_chr = unique_chr,
                                                    new_nms_chr = paste0(recode_pfx_1L_chr, sprintf(paste0("%0",
@@ -483,27 +489,37 @@ add_temporal_vars <- function(data_tb,
                                                  })
   return(data_tb)
 }
-add_tenure <- function (data_xx, date_var_1L_chr = "Date", tenure_ctg_1L_chr = "Temporal", tenure_var_1L_chr = "Tenure",
-                        uid_var_1L_chr = "UID", unit_1L_chr = "year") {
-  ###
-  X_Ready4useDyad <- transform_data_fmt(data_xx, type_1L_chr = "input")
-  X_Ready4useDyad <- renewSlot(X_Ready4useDyad,"ds_tb",
-                               X_Ready4useDyad@ds_tb %>%
-                                 dplyr::arrange(!!rlang::sym(uid_var_1L_chr), !!rlang::sym(date_var_1L_chr)) %>%
-                                 dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>%
-                                 dplyr::mutate(`:=`(!!rlang::sym(tenure_var_1L_chr), (!!rlang::sym(date_var_1L_chr) -
-                                                                                        dplyr::first(!!rlang::sym(date_var_1L_chr))) %>%
-                                                      lubridate::time_length(unit = unit_1L_chr))) %>%
-                                 dplyr::ungroup() %>% dplyr::select(!!rlang::sym(uid_var_1L_chr),
-                                                                    !!rlang::sym(date_var_1L_chr), !!rlang::sym(tenure_var_1L_chr),
-                                                                    dplyr::everything()))
-  X_Ready4useDyad <- X_Ready4useDyad %>%
-    ready4use::add_dictionary(new_cases_r3 = ready4use_dictionary() %>%
-                                ready4use::renew.ready4use_dictionary(var_nm_chr = tenure_var_1L_chr,
-                                                                      var_ctg_chr = tenure_ctg_1L_chr,
-                                                                      var_desc_chr = tenure_var_1L_chr,
-                                                                      var_type_chr = "numeric"))
-  data_xx <- transform_data_fmt(data_xx, X_Ready4useDyad = X_Ready4useDyad)
-  ###
+add_tenure <- add_tenure <- function (data_xx, date_var_1L_chr = "Date", dict_by_ctg_1L_chr = FALSE, tenure_var_1L_chr = "Tenure",
+                                      uid_var_1L_chr = "UID", unit_1L_chr = "year"){
+  if (inherits(data_xx, "Ready4useDyad")) {
+    X_Ready4useDyad <- data_xx
+  }
+  else {
+    X_Ready4useDyad <- ready4use::Ready4useDyad(ds_tb = data_xx)
+  }
+  X_Ready4useDyad@ds_tb  <- X_Ready4useDyad@ds_tb %>% dplyr::group_by(!!rlang::sym(uid_var_1L_chr)) %>%
+    dplyr::mutate(`:=`(!!rlang::sym(tenure_var_1L_chr), (!!rlang::sym(date_var_1L_chr) -
+                                                           dplyr::first(!!rlang::sym(date_var_1L_chr))) %>%
+                         lubridate::time_length(unit = unit_1L_chr))) %>%
+    dplyr::ungroup() %>% dplyr::select(!!rlang::sym(uid_var_1L_chr),
+                                       !!rlang::sym(date_var_1L_chr), !!rlang::sym(tenure_var_1L_chr),
+                                       dplyr::everything())
+  if (inherits(data_xx, "Ready4useDyad")) {
+    X_Ready4useDyad@dictionary_r3 <- X_Ready4useDyad@dictionary_r3 %>%
+      ready4use::renew.ready4use_dictionary(new_cases_r3 = X_Ready4useDyad@dictionary_r3 %>%
+                                              dplyr::filter(F) %>%
+                                              dplyr::mutate(var_nm_chr = tenure_var_1L_chr,
+                                                            var_ctg_chr = "Temporal",
+                                                            var_desc_chr = "Service tenure",
+                                                            var_type_chr = "numeric"))
+    if (dict_by_ctg_1L_chr) {
+      X_Ready4useDyad@dictionary_r3 <- dplyr::arrange(X_Ready4useDyad@dictionary_r3,
+                                                      var_ctg_chr)
+    }
+    data_xx <- X_Ready4useDyad
+  }
+  else {
+    data_xx <- X_Ready4useDyad@ds_tb
+  }
   return(data_xx)
 }
