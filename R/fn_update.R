@@ -23,7 +23,7 @@ update_for_price_year <- function (data_tb, cost_current_1L_chr = "Cost", cost_c
 {
     if (!identical(price_indices_dbl, numeric(0))) {
         multipliers_dbl <- purrr::map_dbl(price_indices_dbl, 
-            ~.x/price_indices_dbl[price_ref_1L_int])
+            ~price_indices_dbl[price_ref_1L_int]/.x)
         multipliers_tb <- tibble::tibble(PriceYearMultiplier = multipliers_dbl, 
             `:=`(!!rlang::sym(time_var_1L_chr), names(price_indices_dbl)))
         if (years_are_cols_1L_lgl) {

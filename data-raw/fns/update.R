@@ -1,25 +1,29 @@
 update_for_price_year <- function (data_tb, cost_current_1L_chr = "Cost", cost_constant_1L_chr = "Cost",
-                                   price_indices_dbl = numeric(0), price_ref_1L_int = 1L, time_var_1L_chr = "FiscalYear", total_1L_chr = character(0), years_are_cols_1L_lgl = F) {
+                                   price_indices_dbl = numeric(0), price_ref_1L_int = 1L, time_var_1L_chr = "FiscalYear",
+                                   total_1L_chr = character(0), years_are_cols_1L_lgl = F)
+{
   if (!identical(price_indices_dbl, numeric(0))) {
     multipliers_dbl <- purrr::map_dbl(price_indices_dbl,
-                                      ~.x/price_indices_dbl[price_ref_1L_int])
+                                      ~price_indices_dbl[price_ref_1L_int]/.x)
     multipliers_tb <- tibble::tibble(PriceYearMultiplier = multipliers_dbl,
                                      `:=`(!!rlang::sym(time_var_1L_chr), names(price_indices_dbl)))
-    if(years_are_cols_1L_lgl){
-      data_tb <- data_tb %>% tidyr::pivot_longer(intersect(names(data_tb), names(price_indices_dbl)), names_to = time_var_1L_chr, values_to = cost_current_1L_chr)
+    if (years_are_cols_1L_lgl) {
+      data_tb <- data_tb %>% tidyr::pivot_longer(intersect(names(data_tb),
+                                                           names(price_indices_dbl)), names_to = time_var_1L_chr,
+                                                 values_to = cost_current_1L_chr)
     }
     data_tb <- data_tb %>% dplyr::left_join(multipliers_tb)
     data_tb <- data_tb %>% dplyr::mutate(`:=`(!!rlang::sym(cost_current_1L_chr),
                                               !!rlang::sym(cost_constant_1L_chr) * PriceYearMultiplier)) %>%
       dplyr::select(-PriceYearMultiplier)
-    if(years_are_cols_1L_lgl){
-      data_tb <- data_tb %>% tidyr::pivot_wider(names_from = time_var_1L_chr, values_from = cost_current_1L_chr)
+    if (years_are_cols_1L_lgl) {
+      data_tb <- data_tb %>% tidyr::pivot_wider(names_from = time_var_1L_chr,
+                                                values_from = cost_current_1L_chr)
     }
-    if(!identical(total_1L_chr, character(0))){
+    if (!identical(total_1L_chr, character(0))) {
       data_tb <- data_tb %>% dplyr::select(-tidyselect::any_of(total_1L_chr))
-      data_tb <- data_tb %>%
-        dplyr::rowwise() %>%
-        dplyr::mutate(!!rlang::sym(total_1L_chr) := sum(dplyr::c_across(tidyselect::any_of(names(price_indices_dbl))))) %>%
+      data_tb <- data_tb %>% dplyr::rowwise() %>% dplyr::mutate(`:=`(!!rlang::sym(total_1L_chr),
+                                                                     sum(dplyr::c_across(tidyselect::any_of(names(price_indices_dbl)))))) %>%
         dplyr::ungroup()
     }
   }
