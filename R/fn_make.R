@@ -199,7 +199,7 @@ make_cost_tb <- function (data_tsb, cost_1L_chr = "Cost", frequency_1L_chr = c("
     temporal_vars_chr <- update_temporal_vars(frequency_1L_chr, 
         temporal_vars_chr = temporal_vars_chr)
     metrics_chr <- intersect(metrics_chr, names(data_tsb))
-    cost_tb <- get_tsibble(Y, frequency_1L_chr = frequency_1L_chr, 
+    cost_tb <- get_tsibble(data_tsb, frequency_1L_chr = frequency_1L_chr, 
         metrics_chr = metrics_chr) %>% add_temporal_vars(date_var_1L_chr = date_var_1L_chr, 
         temporal_vars_chr = temporal_vars_chr) %>% tsibble::as_tibble()
     if (!identical(group_by_chr, character(0))) {

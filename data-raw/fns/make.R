@@ -123,32 +123,27 @@ make_cases_ls <- function(data_tb,
                           })
   return(cases_ls)
 }
-make_cost_tb <- function(data_tsb,
-                         cost_1L_chr = "Cost",
-                         frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal"),
-                         group_by_chr = character(0),
-                         group_fn = sum,
-                         metrics_chr = make_metric_vars(),
-                         temporal_vars_chr = make_temporal_vars(),
-                         unit_1L_chr = character(0),
-                         unit_cost_1L_chr = "UnitCost"){
+make_cost_tb <- function (data_tsb, cost_1L_chr = "Cost",
+                          frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal"), group_by_chr = character(0),
+                          group_fn = sum, metrics_chr = make_metric_vars(), temporal_vars_chr = make_temporal_vars(),
+                          unit_1L_chr = character(0), unit_cost_1L_chr = "UnitCost")
+{
   frequency_1L_chr <- match.arg(frequency_1L_chr)
   date_var_1L_chr <- get_new_index(frequency_1L_chr)
   temporal_vars_chr <- update_temporal_vars(frequency_1L_chr,
                                             temporal_vars_chr = temporal_vars_chr)
   metrics_chr <- intersect(metrics_chr, names(data_tsb))
-  cost_tb <- get_tsibble(Y, frequency_1L_chr = frequency_1L_chr, metrics_chr = metrics_chr) %>%
-    add_temporal_vars(date_var_1L_chr = date_var_1L_chr, temporal_vars_chr = temporal_vars_chr) %>%
-    tsibble::as_tibble()
-  if(!identical(group_by_chr, character(0))){
-    cost_tb <- cost_tb %>%
-      dplyr::group_by(dplyr::across(tidyr::all_of(group_by_chr))) %>%
-      dplyr::summarise(dplyr::across(dplyr::where(is.numeric), group_fn))
-
+  cost_tb <- get_tsibble(data_tsb, frequency_1L_chr = frequency_1L_chr,
+                         metrics_chr = metrics_chr) %>% add_temporal_vars(date_var_1L_chr = date_var_1L_chr,
+                                                                          temporal_vars_chr = temporal_vars_chr) %>% tsibble::as_tibble()
+  if (!identical(group_by_chr, character(0))) {
+    cost_tb <- cost_tb %>% dplyr::group_by(dplyr::across(tidyr::all_of(group_by_chr))) %>%
+      dplyr::summarise(dplyr::across(dplyr::where(is.numeric),
+                                     group_fn))
   }
-  if(!identical(unit_1L_chr, character(0))){
-    cost_tb <- cost_tb %>%
-      dplyr::mutate(!!rlang::sym(unit_cost_1L_chr) := !!rlang::sym(cost_1L_chr)/!!rlang::sym(unit_1L_chr))
+  if (!identical(unit_1L_chr, character(0))) {
+    cost_tb <- cost_tb %>% dplyr::mutate(`:=`(!!rlang::sym(unit_cost_1L_chr),
+                                              !!rlang::sym(cost_1L_chr)/!!rlang::sym(unit_1L_chr)))
   }
   return(cost_tb)
 }
@@ -272,7 +267,8 @@ make_erp_ds <- function(erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
   return(erp_xx)
 }
 make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_dbl = 0,
-                                   what_1L_chr = "Appointments") {
+                                   what_1L_chr = "Appointments")
+{
   forecast_mean_tb <- make_forecasts_tb(fabels_ls, tfmn_args_ls = list(y = unit_cost_1L_dbl),
                                         tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both")
   forecast_cost_tb <- forecast_mean_tb %>% dplyr::mutate(dplyr::across(dplyr::starts_with("Cost"),
