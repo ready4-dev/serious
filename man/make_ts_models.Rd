@@ -17,7 +17,7 @@ make_ts_models(
   key_totals_ls = NULL,
   metrics_chr = make_metric_vars(),
   models_chr = c("Mean", "Naïve", "Seasonal naïve", "Drift", "Trend", "LMTS", "ETS",
-    "ARIMA", "NNTEAR", "Prophet", "Reg_ARIMA", "Reg_Prophet", "Reg_TSLM"),
+    "ARIMA", "NENTAR", "Prophet", "Reg_ARIMA", "Reg_Prophet", "Reg_TSLM"),
   model_type_1L_chr = "multiplicative",
   order_1L_int = 2,
   period_1L_int = 12,
@@ -55,7 +55,7 @@ make_ts_models(
 \item{metrics_chr}{Metrics (a character vector), Default: make_metric_vars()}
 
 \item{models_chr}{Models (a character vector), Default: c("Mean", "Naïve", "Seasonal naïve", "Drift", "Trend", "LMTS",
-"ETS", "ARIMA", "NNTEAR", "Prophet", "Reg_ARIMA", "Reg_Prophet",
+"ETS", "ARIMA", "NENTAR", "Prophet", "Reg_ARIMA", "Reg_Prophet",
 "Reg_TSLM")}
 
 \item{model_type_1L_chr}{Model type (a character vector of length one), Default: 'multiplicative'}

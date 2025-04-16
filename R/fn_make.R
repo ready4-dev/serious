@@ -1548,7 +1548,7 @@ make_training_ds <- function (data_tsb, index_1L_chr = "Date", test_1L_int = int
 #' @param key_totals_ls Key totals (a list), Default: NULL
 #' @param metrics_chr Metrics (a character vector), Default: make_metric_vars()
 #' @param models_chr Models (a character vector), Default: c("Mean", "Naïve", "Seasonal naïve", "Drift", "Trend", "LMTS", 
-#'    "ETS", "ARIMA", "NNTEAR", "Prophet", "Reg_ARIMA", "Reg_Prophet", 
+#'    "ETS", "ARIMA", "NENTAR", "Prophet", "Reg_ARIMA", "Reg_Prophet", 
 #'    "Reg_TSLM")
 #' @param model_type_1L_chr Model type (a character vector of length one), Default: 'multiplicative'
 #' @param order_1L_int Order (an integer vector of length one), Default: 2
@@ -1575,7 +1575,7 @@ make_ts_models <- function (data_xx, approximation_xx = NULL, collapse_1L_lgl = 
         "yearly"), index_1L_chr = character(0), join_to_args_ls = make_tfmn_args_ls(), 
     key_vars_chr = character(0), key_totals_ls = NULL, metrics_chr = make_metric_vars(), 
     models_chr = c("Mean", "Naïve", "Seasonal naïve", "Drift", 
-        "Trend", "LMTS", "ETS", "ARIMA", "NNTEAR", "Prophet", 
+        "Trend", "LMTS", "ETS", "ARIMA", "NENTAR", "Prophet", 
         "Reg_ARIMA", "Reg_Prophet", "Reg_TSLM"), model_type_1L_chr = "multiplicative", 
     order_1L_int = 2, period_1L_int = 12, predictors_chr = character(0), 
     prefix_1L_chr = "Cumulative", stepwise_1L_lgl = TRUE, terms_1L_chr = character(0), 
@@ -1634,8 +1634,8 @@ make_ts_models <- function (data_xx, approximation_xx = NULL, collapse_1L_lgl = 
                 LMTS = fable::TSLM(!!rlang::sym(.x) ~ trend() + 
                   season()), ETS = fable::ETS(!!rlang::sym(.x)), 
                 ARIMA = fable::ARIMA(!!rlang::sym(.x), approximation = approximation_xx, 
-                  stepwise = stepwise_1L_lgl), NNTEAR = fable::NNETAR(!!rlang::sym(.x)), 
-                Prophet = eval(parse(text = paste0("fable.prophet::prophet(", 
+                  stepwise = stepwise_1L_lgl), NNETAR = fable::NNETAR(!!rlang::sym(.x)), 
+                NNTEAR = fable::NNETAR(!!rlang::sym(.x)), Prophet = eval(parse(text = paste0("fable.prophet::prophet(", 
                   .x, "~season(period=", period_1L_int, ", type='", 
                   model_type_1L_chr, "', order=", order_1L_int, 
                   "))"))))
