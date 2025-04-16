@@ -213,55 +213,46 @@ make_episodes_vars <- function(active_var_1L_chr = "Active",
   }
   return(episodes_vars_xx)
 }
-make_erp_ds <- function(erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
-                        age_range_int = 1:115,
-                        age_bands_lup = NULL,
-                        age_tfmn_fn = as.integer,
-                        as_dyad_1L_lgl = TRUE,
-                        frequency_1L_chr = "quarterly",
-                        measure_1L_chr = "count",
-                        select_chr = c("time_period", "age", "sex", "obs_value"),
-                        sex_chr = c("Female", "Male", "Total"),
-                        summarise_1L_lgl = FALSE,
-                        var_ctg_chr = c("Temporal", "Key", "Key", "Metric")){
-  measure_1L_int <- switch(measure_1L_chr, "count" = 1, "change" = 2, "%change" = 3)
-  period_1L_chr <-  get_new_index(frequency_1L_chr)
+make_erp_ds <- function (erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
+                         age_range_int = 1:115, age_bands_lup = NULL, age_tfmn_fn = as.integer,
+                         as_dyad_1L_lgl = TRUE, frequency_1L_chr = "quarterly", measure_1L_chr = "count",
+                         select_chr = c("time_period", "age", "sex", "obs_value"),
+                         sex_chr = c("Female", "Male", "Total"), summarise_1L_lgl = FALSE,
+                         var_ctg_chr = c("Temporal", "Key", "Key", "Metric"))
+{
+  measure_1L_int <- switch(measure_1L_chr, count = 1, change = 2,
+                           `%change` = 3)
+  period_1L_chr <- get_new_index(frequency_1L_chr)
   temporal_fn <- get_temporal_fn(period_1L_chr)
-  value_1L_chr <- ifelse(measure_1L_int < 3, "Persons","Percentage")
-  # temporal_fns_ls <- make_temporal_fns(rename_1L_lgl = TRUE) %>% purrr::keep_at(periods_chr)
+  value_1L_chr <- ifelse(measure_1L_int < 3, "Persons", "Percentage")
   erp_tb <- erp_raw_tb %>%
+    haven::zap_labels() %>%
     dplyr::filter(measure == measure_1L_int) %>%
     dplyr::select(tidyselect::all_of(select_chr)) %>%
-    # -c(measure, region, freq, unit_measure, obs_status, obs_comment))
-    haven::zap_labels() %>%
     dplyr::mutate(sex = dplyr::case_when(sex == 1 ~ sex_chr[2],
-                                         sex == 2 ~ sex_chr[1],
-                                         sex == 3 ~ sex_chr[3])) %>%
-    dplyr::mutate(age = age_tfmn_fn(age)) %>%
-    dplyr::arrange(time_period, age, sex) %>%
-    #dplyr::select(time_period, age, sex, dplyr::everything()) %>%
-    dplyr::rename(!!rlang::sym(period_1L_chr) := time_period,
-                  !!rlang::sym(value_1L_chr) := obs_value,
-                  Age = age,
-                  Sex = sex) %>%
-    dplyr::mutate(!!rlang::sym(period_1L_chr) := temporal_fn(Quarter)) %>%
-    dplyr::filter(Age %in% age_range_int)
-  if(!is.null(age_bands_lup)){
-    erp_tb <- erp_tb %>%
-      dplyr::mutate(Age = Age %>% purrr::map_chr(~{
-        age_1L_int <- .x
-        age_bands_lup$Name[which(age_bands_lup$Range %>% purrr::map_lgl(~age_1L_int %in% .x[1]:.x[2]))]
-      }))
+                                         sex == 2 ~ sex_chr[1], sex == 3 ~ sex_chr[3])) %>%
+    dplyr::mutate(age = age_tfmn_fn(age)) %>% dplyr::arrange(time_period,
+                                                             age, sex) %>% dplyr::rename(`:=`(!!rlang::sym(period_1L_chr),
+                                                                                              time_period), `:=`(!!rlang::sym(value_1L_chr), obs_value),
+                                                                                         Age = age, Sex = sex) %>% dplyr::mutate(`:=`(!!rlang::sym(period_1L_chr),
+                                                                                                                                      temporal_fn(Quarter))) %>% dplyr::filter(Age %in% age_range_int)
+  if (!is.null(age_bands_lup)) {
+    erp_tb <- erp_tb %>% dplyr::mutate(Age = Age %>% purrr::map_chr(~{
+      age_1L_int <- .x
+      age_bands_lup$Name[which(age_bands_lup$Range %>%
+                                 purrr::map_lgl(~age_1L_int %in% .x[1]:.x[2]))]
+    }))
   }
-  if(summarise_1L_lgl){
-    erp_tb <- erp_tb %>%
-      dplyr::group_by(dplyr::across(setdiff(names(erp_tb), value_1L_chr))) %>%
-      dplyr::summarise(!!rlang::sym(value_1L_chr) := sum(!!rlang::sym(value_1L_chr))) %>%
-      dplyr::ungroup()
+  if (summarise_1L_lgl) {
+    erp_tb <- erp_tb %>% dplyr::group_by(dplyr::across(setdiff(names(erp_tb),
+                                                               value_1L_chr))) %>% dplyr::summarise(`:=`(!!rlang::sym(value_1L_chr),
+                                                                                                         sum(!!rlang::sym(value_1L_chr)))) %>% dplyr::ungroup()
   }
-  if(as_dyad_1L_lgl){
-    erp_xx <- ready4use::Ready4useDyad(ds_tb = erp_tb) %>% ready4use::add_dictionary(var_ctg_chr = var_ctg_chr)
-  } else{
+  if (as_dyad_1L_lgl) {
+    erp_xx <- ready4use::Ready4useDyad(ds_tb = erp_tb) %>%
+      ready4use::add_dictionary(var_ctg_chr = var_ctg_chr)
+  }
+  else {
     erp_xx <- erp_tb
   }
   return(erp_xx)

@@ -370,9 +370,9 @@ make_episodes_vars <- function (active_var_1L_chr = "Active", episode_var_1L_chr
 #' @return Estimatedesident Population (an output object of multiple potential types)
 #' @rdname make_erp_ds
 #' @export 
+#' @importFrom haven zap_labels
 #' @importFrom dplyr filter select mutate case_when arrange rename group_by across summarise ungroup
 #' @importFrom tidyselect all_of
-#' @importFrom haven zap_labels
 #' @importFrom rlang sym
 #' @importFrom purrr map_chr map_lgl
 #' @importFrom ready4use Ready4useDyad add_dictionary
@@ -388,8 +388,8 @@ make_erp_ds <- function (erp_raw_tb = get_raw_erp_data(region_chr = "AUS"),
     period_1L_chr <- get_new_index(frequency_1L_chr)
     temporal_fn <- get_temporal_fn(period_1L_chr)
     value_1L_chr <- ifelse(measure_1L_int < 3, "Persons", "Percentage")
-    erp_tb <- erp_raw_tb %>% dplyr::filter(measure == measure_1L_int) %>% 
-        dplyr::select(tidyselect::all_of(select_chr)) %>% haven::zap_labels() %>% 
+    erp_tb <- erp_raw_tb %>% haven::zap_labels() %>% dplyr::filter(measure == 
+        measure_1L_int) %>% dplyr::select(tidyselect::all_of(select_chr)) %>% 
         dplyr::mutate(sex = dplyr::case_when(sex == 1 ~ sex_chr[2], 
             sex == 2 ~ sex_chr[1], sex == 3 ~ sex_chr[3])) %>% 
         dplyr::mutate(age = age_tfmn_fn(age)) %>% dplyr::arrange(time_period, 
