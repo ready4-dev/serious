@@ -261,17 +261,17 @@ make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_db
                                    what_1L_chr = "Appointments")
 {
   forecast_mean_tb <- make_forecasts_tb(fabels_ls, tfmn_args_ls = list(y = unit_cost_1L_dbl),
-                                        tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both")
+                                        tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both", what_1L_chr = what_1L_chr)
   forecast_cost_tb <- forecast_mean_tb %>% dplyr::mutate(dplyr::across(dplyr::starts_with("Cost"),
                                                                        ~.x + fixed_cost_1L_dbl, .names = "Total{.col}"))
   forecast_cost_tb <- forecast_cost_tb %>% tidyr::pivot_longer(cols = names(forecast_cost_tb),
-                                                               names_to = "Parameter") %>%
-    dplyr::mutate(Statistic = Parameter %>%
-                    stringr::str_remove("TotalCost_") %>% stringr::str_remove("Cost_") %>%
-                    stringr::str_replace_all("_", " ") %>% stringr::str_replace_all(".mean",
-                                                                                    "Mean")) %>% dplyr::mutate(Parameter = dplyr::case_when(startsWith(Parameter, "Cost") ~ paste0(what_1L_chr, " Cost"),
-                                                                                                                                            startsWith(Parameter, "Total") ~ "Total Cost", T ~ what_1L_chr)) %>%
-    tidyr::pivot_wider(names_from = "Statistic", values_from = "value")
+                                                               names_to = "Parameter") %>% dplyr::mutate(Statistic = Parameter %>%
+                                                                                                           stringr::str_remove("TotalCost_") %>% stringr::str_remove("Cost_") %>%
+                                                                                                           stringr::str_replace_all("_", " ") %>% stringr::str_replace_all(".mean",
+                                                                                                                                                                           "Mean")) %>% dplyr::mutate(Parameter = dplyr::case_when(startsWith(Parameter,
+                                                                                                                                                                                                                                              "Cost") ~ paste0(what_1L_chr, " Cost"), startsWith(Parameter,
+                                                                                                                                                                                                                                                                                                 "Total") ~ "Total Cost", T ~ what_1L_chr)) %>% tidyr::pivot_wider(names_from = "Statistic",
+                                                                                                                                                                                                                                                                                                                                                                   values_from = "value")
   return(forecast_cost_tb)
 }
 make_forecasts_tb <- function(fabels_ls,
@@ -730,6 +730,98 @@ make_sampling_lup <- function(shares_dbl,
     dplyr::select(!!rlang::sym(uid_var_nm_1L_chr), dplyr::everything())
   return(sampling_lup)
 }
+make_scenario_forecast_costs <- function(scenario_forecasts_ls,
+                                         unit_costs_tb,
+                                         what_1L_chr,
+                                         fixed_cost_1L_dbl = 0,
+                                         positive_1L_lgl = FALSE,
+                                         predictors_chr = character(0),
+                                         type_1L_chr = c("Variable", "Fixed")){
+  type_1L_chr <- match.arg(type_1L_chr)
+  forecast_costs_tb <- names(scenario_forecasts_ls) %>% purrr::map_dfr(~{
+    name_1L_chr <- .x
+    unique(unit_costs_tb$Scenario) %>%
+      purrr::map_dfr(~{
+        costs_tb <- make_forecast_cost_tb(scenario_forecasts_ls %>% purrr::pluck(name_1L_chr) %>% purrr::pluck("fabels_ls"),
+                                          fixed_cost_1L_dbl = fixed_cost_1L_dbl,
+                                          unit_cost_1L_dbl = ready4::get_from_lup_obj(unit_costs_tb %>% dplyr::filter(Scenario==.x),
+                                                                                      match_value_xx = type_1L_chr,
+                                                                                      match_var_nm_1L_chr = "Type",
+                                                                                      target_var_nm_1L_chr = "UnitCost"),
+                                          what_1L_chr = what_1L_chr) %>%
+          dplyr::select(-tidyselect::any_of(c(predictors_chr,"0")))
+        if(fixed_cost_1L_dbl==0){
+          costs_tb <- costs_tb  %>% dplyr::filter(Parameter != "Total Cost")
+        }
+        costs_tb %>%
+          dplyr::mutate(Scenario = paste0(.x,"_",name_1L_chr)) %>%
+          dplyr::select(Scenario, dplyr::everything())
+      }
+
+      )
+  }) %>%
+    dplyr::arrange(Scenario, Parameter)
+  if(positive_1L_lgl){
+    forecast_costs_tb <- forecast_costs_tb %>%
+      dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~ .x %>% purrr::map_dbl(~max(.x,0))))
+  }
+  return(forecast_costs_tb)
+}
+make_scenario_forecasts <- function(scenario_forecasts_ls,
+                                    what_1L_chr,
+                                    date_end_dtm = NULL,
+                                    date_start_dtm = NULL,
+                                    date_var_1L_chr = "Day",
+                                    group_by_1L_chr = character(0),
+                                    group_fn = sum,
+                                    positive_1L_lgl = FALSE,
+                                    summarise_1L_lgl = FALSE,
+                                    summary_fn = mean,
+                                    summary_2_fn = sum,
+                                    tfmn_args_ls = NULL,
+                                    tfmn_fn = NULL,
+                                    tfmn_pattern_1L_chr = "Transformed_{.col}",
+                                    type_1L_chr = c("default", "grouped", "summary", "both"),
+                                    predictors_chr = character(0)){
+  forecasts_tb <- names(scenario_forecasts_ls) %>% purrr::map_dfr(~{
+    name_1L_chr <- .x
+    make_forecasts_tb(scenario_forecasts_ls %>% purrr::pluck(name_1L_chr) %>% purrr::pluck("fabels_ls"),
+                      group_by_1L_chr = group_by_1L_chr, group_fn = group_fn,
+                      summary_fn = summary_fn, tfmn_args_ls = tfmn_args_ls, tfmn_fn = tfmn_fn, tfmn_pattern_1L_chr = tfmn_pattern_1L_chr,
+                      type_1L_chr = type_1L_chr, what_1L_chr = what_1L_chr) %>%
+      dplyr::select(-tidyselect::any_of(c(predictors_chr,"0"))) %>%
+      dplyr::rename(Distribution = !!rlang::sym(what_1L_chr),
+                    !!rlang::sym(what_1L_chr) := .mean) %>%
+      dplyr::mutate(Scenario = name_1L_chr) %>%
+      dplyr::relocate(Scenario, .after = .model)
+
+
+  })
+  if(summarise_1L_lgl){
+    forecasts_tb <- forecasts_tb  %>%
+      dplyr::rename(.mean = what_1L_chr) %>%
+      dplyr::select(-c(".model", "Distribution"))
+    if(!is.null(date_start_dtm)){
+      forecasts_tb <- forecasts_tb  %>%
+        dplyr::filter(!!rlang::sym(date_var_1L_chr) >= date_start_dtm)
+    }
+    if(!is.null(date_end_dtm)){
+      forecasts_tb <- forecasts_tb  %>%
+        dplyr::filter(!!rlang::sym(date_var_1L_chr) <= date_end_dtm)
+    }
+    forecasts_tb <- forecasts_tb %>%
+      dplyr::group_by(Scenario)
+    if(positive_1L_lgl){
+      forecasts_tb <- forecasts_tb %>%
+        dplyr::mutate(dplyr::across(dplyr::where(is.numeric),
+                                    ~ .x %>% purrr::map_dbl(~max(.x,0))))
+    }
+    forecasts_tb <- forecasts_tb %>%
+      dplyr::summarise(dplyr::across(dplyr::where(is.numeric),
+                                     ~summary_2_fn(.x)))
+  }
+  return(forecasts_tb)
+}
 make_scenarios_tb <- function(base_case_tb,
                               data_tb,
                               scenarios_xx,
@@ -1054,63 +1146,58 @@ make_training_ds <- function(data_tsb,
 make_ts_models <- function (data_xx, approximation_xx = NULL, collapse_1L_lgl = T,
                             cumulatives_chr = character(0), fill_gaps_1L_lgl = FALSE,
                             frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly",
-                                                 "yearly"), index_1L_chr = character(0), join_to_args_ls = make_tfmn_args_ls(), key_vars_chr = character(0),
-                            key_totals_ls = NULL, metrics_chr = make_metric_vars(), models_chr = c("Mean",
-                                                                                                   "Naïve", "Seasonal naïve", "Drift", "Trend", "LMTS",
-                                                                                                   "ETS", "ARIMA", "NENTAR",
-                                                                                                   # "NNTEAR",
-                                                                                                   "Prophet", "Reg_ARIMA", "Reg_Prophet","Reg_TSLM"),
-                            model_type_1L_chr = "multiplicative", order_1L_int = 2, period_1L_int = 12, predictors_chr = character(0), prefix_1L_chr = "Cumulative",
-                            stepwise_1L_lgl = TRUE, terms_1L_chr = character(0), terms_ls = NULL, test_1L_int = integer(0),
-                            type_1L_chr = c("totals", "key"), what_1L_chr = character(0)) {
+                                                 "yearly"), index_1L_chr = character(0), join_to_args_ls = make_tfmn_args_ls(),
+                            key_vars_chr = character(0), key_totals_ls = NULL, metrics_chr = make_metric_vars(),
+                            models_chr = c("Mean", "Naïve", "Seasonal naïve", "Drift",
+                                           "Trend", "LMTS", "ETS", "ARIMA", "NENTAR", "Prophet",
+                                           "Reg_ARIMA", "Reg_Prophet", "Reg_TSLM"), model_type_1L_chr = "multiplicative",
+                            order_1L_int = 2, period_1L_int = 12, predictors_chr = character(0),
+                            prefix_1L_chr = "Cumulative", stepwise_1L_lgl = TRUE, terms_1L_chr = character(0),
+                            terms_ls = NULL, test_1L_int = integer(0), type_1L_chr = c("totals",
+                                                                                       "key"), what_1L_chr = character(0))
+{
   frequency_1L_chr <- match.arg(frequency_1L_chr)
   type_1L_chr <- match.arg(type_1L_chr)
-  if(is.null(terms_ls)){
-    args_ls <- list(fill_gaps_1L_lgl = fill_gaps_1L_lgl, frequency_1L_chr = frequency_1L_chr,
-                    key_totals_ls = key_totals_ls, key_vars_chr = key_vars_chr,
-                    metrics_chr = metrics_chr, type_1L_chr = type_1L_chr,
-                    what_1L_chr = what_1L_chr)
+  if (is.null(terms_ls)) {
+    args_ls <- list(fill_gaps_1L_lgl = fill_gaps_1L_lgl,
+                    frequency_1L_chr = frequency_1L_chr, key_totals_ls = key_totals_ls,
+                    key_vars_chr = key_vars_chr, metrics_chr = metrics_chr,
+                    type_1L_chr = type_1L_chr, what_1L_chr = what_1L_chr)
     predictor_args_ls <- cumulatives_args_ls <- make_tfmn_args_ls()
-    if(!identical(predictors_chr, character(0))){
+    if (!identical(predictors_chr, character(0))) {
       predictor_args_ls <- args_ls
       predictor_args_ls$metrics_chr <- predictors_chr
     }
-    if(!identical(cumulatives_chr, character(0))){
+    if (!identical(cumulatives_chr, character(0))) {
       cumulatives_args_ls <- args_ls
       cumulatives_args_ls$type_1L_chr <- "cumulative"
       cumulatives_args_ls$metrics_chr <- cumulatives_chr
       cumulatives_args_ls$prefix_1L_chr <- "Cumulative"
     }
-    if(!identical(join_to_args_ls, make_tfmn_args_ls())){
+    if (!identical(join_to_args_ls, make_tfmn_args_ls())) {
       join_to_args_ls$frequency_1L_chr <- frequency_1L_chr
-      if(identical(join_to_args_ls$fill_gaps_1L_lgl, logical(0))){
+      if (identical(join_to_args_ls$fill_gaps_1L_lgl, logical(0))) {
         join_to_args_ls$fill_gaps_1L_lgl <- fill_gaps_1L_lgl
       }
-      if(identical(join_to_args_ls$metrics_chr, character(0))){
-        join_to_args_ls$metrics_chr <- setdiff(names(join_to_args_ls$join_to_xx, get_new_index(frequency_1L_chr)))
+      if (identical(join_to_args_ls$metrics_chr, character(0))) {
+        join_to_args_ls$metrics_chr <- setdiff(names(join_to_args_ls$join_to_xx,
+                                                     get_new_index(frequency_1L_chr)))
       }
     }
-    # data_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!args_ls)
-    # if(!is.null(predictor_args_ls)){
-    #   predictors_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!predictor_args_ls)
-    #   data_tsb <- dplyr::left_join(data_tsb, predictors_tsb)
-    # }
-    # if(!is.null(cumulatives_args_ls)){
-    #   cumulatives_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!cumulatives_args_ls)
-    #   data_tsb <- dplyr::left_join(data_tsb, cumulatives_tsb)
-    # }
     if (identical(terms_1L_chr, character(0))) {
-      models_chr <- setdiff(models_chr, c("Reg_TSLM", "Reg_Prophet", "Reg_ARIMA"))
+      models_chr <- setdiff(models_chr, c("Reg_TSLM", "Reg_Prophet",
+                                          "Reg_ARIMA"))
     }
-    ts_models_ls <- make_ts_models_ls(mabels_ls = list(), args_ls = args_ls, cumulatives_args_ls = cumulatives_args_ls, join_to_args_ls = join_to_args_ls,
-                                      predictor_args_ls = predictor_args_ls, models_chr = models_chr, test_1L_int = test_1L_int)
+    ts_models_ls <- make_ts_models_ls(mabels_ls = list(),
+                                      args_ls = args_ls, cumulatives_args_ls = cumulatives_args_ls,
+                                      join_to_args_ls = join_to_args_ls, predictor_args_ls = predictor_args_ls,
+                                      models_chr = models_chr, test_1L_int = test_1L_int)
     data_tsb <- transform_to_mdl_input(data_xx, ts_models_ls = ts_models_ls)
     if (identical(index_1L_chr, character(0))) {
       index_1L_chr <- get_new_index(frequency_1L_chr)
     }
     training_tsb <- make_training_ds(data_tsb, index_1L_chr = index_1L_chr,
                                      test_1L_int = test_1L_int)
-
     mabels_ls <- metrics_chr %>% purrr::map(~{
       mdl_1L_chr <- paste0(.x, " ~ ", terms_1L_chr)
       model_args_ls <- list()
@@ -1118,24 +1205,22 @@ make_ts_models <- function (data_xx, approximation_xx = NULL, collapse_1L_lgl = 
                             Naïve = fable::NAIVE(!!rlang::sym(.x)), `Seasonal naïve` = fable::SNAIVE(!!rlang::sym(.x)),
                             Drift = fable::NAIVE(!!rlang::sym(.x) ~ drift()),
                             Trend = fable::TSLM(!!rlang::sym(.x) ~ trend()),
-                            LMTS = fable::TSLM(!!rlang::sym(.x) ~ trend() + season()),
-                            ETS = fable::ETS(!!rlang::sym(.x)), ARIMA = fable::ARIMA(!!rlang::sym(.x),
-                                                                                     approximation = approximation_xx, stepwise = stepwise_1L_lgl),
-                            NNETAR = fable::NNETAR(!!rlang::sym(.x)),
-                            NNTEAR = fable::NNETAR(!!rlang::sym(.x)), # Purely for legacy reasons
-                            Prophet = eval(parse(text = paste0("fable.prophet::prophet(",
-                                                               .x, "~season(period=", period_1L_int, ", type='",
-                                                               model_type_1L_chr, "', order=", order_1L_int,
-                                                               "))"))))
+                            LMTS = fable::TSLM(!!rlang::sym(.x) ~ trend() +
+                                                 season()), ETS = fable::ETS(!!rlang::sym(.x)),
+                            ARIMA = fable::ARIMA(!!rlang::sym(.x), approximation = approximation_xx,
+                                                 stepwise = stepwise_1L_lgl), NNETAR = fable::NNETAR(!!rlang::sym(.x)),
+                            NNTEAR = fable::NNETAR(!!rlang::sym(.x)), Prophet = eval(parse(text = paste0("fable.prophet::prophet(",
+                                                                                                         .x, "~season(period=", period_1L_int, ", type='",
+                                                                                                         model_type_1L_chr, "', order=", order_1L_int,
+                                                                                                         "))"))))
       if (!identical(terms_1L_chr, character(0))) {
         model_args_ls <- append(model_args_ls, list(Reg_ARIMA = eval(parse(text = paste0("fable::ARIMA(",
                                                                                          mdl_1L_chr, ", approximation = approximation_xx, stepwise = stepwise_1L_lgl)"))),
                                                     Reg_TSLM = eval(parse(text = paste0("fable::TSLM(",
-                                                                                        mdl_1L_chr, ")"))),
-                                                    Reg_Prophet = eval(parse(text = paste0("fable.prophet::prophet(",
-                                                                                           mdl_1L_chr, " + season(period=", period_1L_int, ", type='",
-                                                                                           model_type_1L_chr, "', order=", order_1L_int,
-                                                                                           "))")))))
+                                                                                        mdl_1L_chr, ")"))), Reg_Prophet = eval(parse(text = paste0("fable.prophet::prophet(",
+                                                                                                                                                   mdl_1L_chr, " + season(period=", period_1L_int,
+                                                                                                                                                   ", type='", model_type_1L_chr, "', order=",
+                                                                                                                                                   order_1L_int, "))")))))
       }
       model_args_ls <- model_args_ls %>% purrr::keep_at(models_chr)
       rlang::exec(fabletools::model, .data = training_tsb,
@@ -1143,32 +1228,38 @@ make_ts_models <- function (data_xx, approximation_xx = NULL, collapse_1L_lgl = 
     }) %>% stats::setNames(metrics_chr)
     ts_models_ls$mabels_ls <- mabels_ls
     ts_models_xx <- ts_models_ls
-  }else{
-    ts_models_xx <- terms_ls %>% purrr::map(~make_ts_models(data_xx, approximation_xx = approximation_xx, cumulatives_chr = cumulatives_chr, fill_gaps_1L_lgl = fill_gaps_1L_lgl,
-                                                            frequency_1L_chr = frequency_1L_chr, index_1L_chr = index_1L_chr, join_to_args_ls = join_to_args_ls, key_vars_chr = key_vars_chr,
-                                                            key_totals_ls = key_totals_ls, metrics_chr = metrics_chr, models_chr = models_chr,
-                                                            model_type_1L_chr = model_type_1L_chr, order_1L_int = order_1L_int, period_1L_int = period_1L_int, predictors_chr = predictors_chr, prefix_1L_chr = prefix_1L_chr ,
-                                                            stepwise_1L_lgl = stepwise_1L_lgl, terms_1L_chr = .x, terms_ls = NULL, test_1L_int = test_1L_int,
-                                                            type_1L_chr = type_1L_chr, what_1L_chr = what_1L_chr)) %>% stats::setNames(names(terms_ls))
-    if(length(ts_models_xx) == 1){
+  }  else {
+    ts_models_xx <- terms_ls %>% purrr::map(~make_ts_models(data_xx,
+                                                            approximation_xx = approximation_xx, cumulatives_chr = cumulatives_chr,
+                                                            fill_gaps_1L_lgl = fill_gaps_1L_lgl, frequency_1L_chr = frequency_1L_chr,
+                                                            index_1L_chr = index_1L_chr, join_to_args_ls = join_to_args_ls,
+                                                            key_vars_chr = key_vars_chr, key_totals_ls = key_totals_ls,
+                                                            metrics_chr = metrics_chr, models_chr = models_chr,
+                                                            model_type_1L_chr = model_type_1L_chr, order_1L_int = order_1L_int,
+                                                            period_1L_int = period_1L_int, predictors_chr = predictors_chr,
+                                                            prefix_1L_chr = prefix_1L_chr, stepwise_1L_lgl = stepwise_1L_lgl,
+                                                            terms_1L_chr = .x, terms_ls = NULL, test_1L_int = test_1L_int,
+                                                            type_1L_chr = type_1L_chr, what_1L_chr = what_1L_chr)) %>%
+      stats::setNames(names(terms_ls))
+    if (length(ts_models_xx) == 1) {
       ts_models_xx <- ts_models_xx %>% purrr::pluck(1)
-    }else{
-      if(collapse_1L_lgl){
+    }    else {
+      if (collapse_1L_lgl) {
         mabels_ls <- ts_models_xx %>% purrr::map2(names(ts_models_xx),
                                                   ~{
                                                     name_1L_chr <- .y
                                                     .x$mabels_ls %>% purrr::map(~{
                                                       mabel_tb <- .x
-                                                      names(mabel_tb) <- paste0(names(mabel_tb), paste0("_", name_1L_chr))
+                                                      names(mabel_tb) <- paste0(names(mabel_tb),
+                                                                                paste0("_", name_1L_chr))
                                                       mabel_tb
-                                                    })}
-        )
+                                                    })
+                                                  })
         vars_chr <- mabels_ls[[1]] %>% names()
-        mabels_ls <- vars_chr %>%
-          purrr::map(~ {
-            name_1L_chr <- .x
-            mabels_ls %>% purrr::map_dfc(~.x %>% purrr::pluck(name_1L_chr))
-          }) %>% stats::setNames(vars_chr)
+        mabels_ls <- vars_chr %>% purrr::map(~{
+          name_1L_chr <- .x
+          mabels_ls %>% purrr::map_dfc(~.x %>% purrr::pluck(name_1L_chr))
+        }) %>% stats::setNames(vars_chr)
         ts_models_xx <- ts_models_xx %>% purrr::pluck(1)
         ts_models_xx$mabels_ls <- mabels_ls
       }

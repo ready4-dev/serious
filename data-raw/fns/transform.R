@@ -81,27 +81,28 @@ transform_output <- function(output_ls){
     purrr::flatten_dbl()
   return(output_ls)
 }
-transform_to_mdl_input <- function(data_xx,
-                                   ts_models_ls = make_ts_models_ls()){
+transform_to_mdl_input <- function (data_xx, ts_models_ls = make_ts_models_ls())  {
   assertthat::assert_that(!identical(ts_models_ls, make_ts_models_ls()))
   args_ls <- ts_models_ls$args_ls
   cumulatives_args_ls <- ts_models_ls$cumulatives_args_ls
   predictor_args_ls <- ts_models_ls$predictor_args_ls
   join_to_args_ls <- ts_models_ls$join_to_args_ls
-
   data_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!args_ls)
-  if(!identical(predictor_args_ls, make_tfmn_args_ls())){
-    predictors_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!predictor_args_ls)
+  if (!identical(predictor_args_ls, make_tfmn_args_ls())) {
+    predictors_tsb <- rlang::exec(get_tsibble, data_xx = data_xx,
+                                  !!!predictor_args_ls)
     data_tsb <- dplyr::left_join(data_tsb, predictors_tsb)
   }
-  if(!identical(cumulatives_args_ls, make_tfmn_args_ls())){
-    cumulatives_tsb <- rlang::exec(get_tsibble, data_xx = data_xx, !!!cumulatives_args_ls)
+  if (!identical(cumulatives_args_ls, make_tfmn_args_ls())) {
+    cumulatives_tsb <- rlang::exec(get_tsibble, data_xx = data_xx,
+                                   !!!cumulatives_args_ls)
     data_tsb <- dplyr::left_join(data_tsb, cumulatives_tsb)
   }
-  if(!identical(join_to_args_ls, make_tfmn_args_ls())){
+  if (!identical(join_to_args_ls, make_tfmn_args_ls())) {
     join_to_xx <- join_to_args_ls$join_to_xx
     join_to_args_ls$join_to_xx <- NULL
-    join_to_tsb <- rlang::exec(get_tsibble, data_xx = join_to_xx, !!!join_to_args_ls)
+    join_to_tsb <- rlang::exec(get_tsibble, data_xx = join_to_xx,
+                               !!!join_to_args_ls)
     data_tsb <- dplyr::left_join(data_tsb, join_to_tsb)
   }
   return(data_tsb)

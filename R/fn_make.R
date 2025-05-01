@@ -435,7 +435,8 @@ make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_db
     what_1L_chr = "Appointments") 
 {
     forecast_mean_tb <- make_forecasts_tb(fabels_ls, tfmn_args_ls = list(y = unit_cost_1L_dbl), 
-        tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both")
+        tfmn_fn = `*`, tfmn_pattern_1L_chr = "Cost_{.col}", type_1L_chr = "both", 
+        what_1L_chr = what_1L_chr)
     forecast_cost_tb <- forecast_mean_tb %>% dplyr::mutate(dplyr::across(dplyr::starts_with("Cost"), 
         ~.x + fixed_cost_1L_dbl, .names = "Total{.col}"))
     forecast_cost_tb <- forecast_cost_tb %>% tidyr::pivot_longer(cols = names(forecast_cost_tb), 
@@ -1087,6 +1088,120 @@ make_sampling_lup <- function (shares_dbl, values_xx, var_nm_1L_chr, prefix_1L_c
         purrr::pluck(1) %>% dplyr::select(!!rlang::sym(uid_var_nm_1L_chr), 
         dplyr::everything())
     return(sampling_lup)
+}
+#' Make scenario forecast costs
+#' @description make_scenario_forecast_costs() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make scenario forecast costs. The function returns Forecast costs (a tibble).
+#' @param scenario_forecasts_ls Scenario forecasts (a list)
+#' @param unit_costs_tb Unit costs (a tibble)
+#' @param what_1L_chr What (a character vector of length one)
+#' @param fixed_cost_1L_dbl Fixed cost (a double vector of length one), Default: 0
+#' @param positive_1L_lgl Positive (a logical vector of length one), Default: FALSE
+#' @param predictors_chr Predictors (a character vector), Default: character(0)
+#' @param type_1L_chr Type (a character vector of length one), Default: c("Variable", "Fixed")
+#' @return Forecast costs (a tibble)
+#' @rdname make_scenario_forecast_costs
+#' @export 
+#' @importFrom purrr map_dfr pluck map_dbl
+#' @importFrom ready4 get_from_lup_obj
+#' @importFrom dplyr filter select mutate everything arrange across where
+#' @importFrom tidyselect any_of
+#' @keywords internal
+make_scenario_forecast_costs <- function (scenario_forecasts_ls, unit_costs_tb, what_1L_chr, 
+    fixed_cost_1L_dbl = 0, positive_1L_lgl = FALSE, predictors_chr = character(0), 
+    type_1L_chr = c("Variable", "Fixed")) 
+{
+    type_1L_chr <- match.arg(type_1L_chr)
+    forecast_costs_tb <- names(scenario_forecasts_ls) %>% purrr::map_dfr(~{
+        name_1L_chr <- .x
+        unique(unit_costs_tb$Scenario) %>% purrr::map_dfr(~{
+            costs_tb <- make_forecast_cost_tb(scenario_forecasts_ls %>% 
+                purrr::pluck(name_1L_chr) %>% purrr::pluck("fabels_ls"), 
+                fixed_cost_1L_dbl = fixed_cost_1L_dbl, unit_cost_1L_dbl = ready4::get_from_lup_obj(unit_costs_tb %>% 
+                  dplyr::filter(Scenario == .x), match_value_xx = type_1L_chr, 
+                  match_var_nm_1L_chr = "Type", target_var_nm_1L_chr = "UnitCost"), 
+                what_1L_chr = what_1L_chr) %>% dplyr::select(-tidyselect::any_of(c(predictors_chr, 
+                "0")))
+            if (fixed_cost_1L_dbl == 0) {
+                costs_tb <- costs_tb %>% dplyr::filter(Parameter != 
+                  "Total Cost")
+            }
+            costs_tb %>% dplyr::mutate(Scenario = paste0(.x, 
+                "_", name_1L_chr)) %>% dplyr::select(Scenario, 
+                dplyr::everything())
+        })
+    }) %>% dplyr::arrange(Scenario, Parameter)
+    if (positive_1L_lgl) {
+        forecast_costs_tb <- forecast_costs_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), 
+            ~.x %>% purrr::map_dbl(~max(.x, 0))))
+    }
+    return(forecast_costs_tb)
+}
+#' Make scenario forecasts
+#' @description make_scenario_forecasts() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make scenario forecasts. The function returns Forecasts (a tibble).
+#' @param scenario_forecasts_ls Scenario forecasts (a list)
+#' @param what_1L_chr What (a character vector of length one)
+#' @param date_end_dtm Date end (a date vector), Default: NULL
+#' @param date_start_dtm Date start (a date vector), Default: NULL
+#' @param date_var_1L_chr Date variable (a character vector of length one), Default: 'Day'
+#' @param group_by_1L_chr Group by (a character vector of length one), Default: character(0)
+#' @param group_fn Group (a function), Default: sum
+#' @param positive_1L_lgl Positive (a logical vector of length one), Default: FALSE
+#' @param summarise_1L_lgl Summarise (a logical vector of length one), Default: FALSE
+#' @param summary_fn Summary (a function), Default: mean
+#' @param summary_2_fn Summary 2 (a function), Default: sum
+#' @param tfmn_args_ls Transformation arguments (a list), Default: NULL
+#' @param tfmn_fn Transformation (a function), Default: NULL
+#' @param tfmn_pattern_1L_chr Transformation pattern (a character vector of length one), Default: 'Transformed_{.col}'
+#' @param type_1L_chr Type (a character vector of length one), Default: c("default", "grouped", "summary", "both")
+#' @param predictors_chr Predictors (a character vector), Default: character(0)
+#' @return Forecasts (a tibble)
+#' @rdname make_scenario_forecasts
+#' @export 
+#' @importFrom purrr map_dfr pluck map_dbl
+#' @importFrom dplyr select rename mutate relocate filter group_by across where summarise
+#' @importFrom tidyselect any_of
+#' @importFrom rlang sym
+#' @keywords internal
+make_scenario_forecasts <- function (scenario_forecasts_ls, what_1L_chr, date_end_dtm = NULL, 
+    date_start_dtm = NULL, date_var_1L_chr = "Day", group_by_1L_chr = character(0), 
+    group_fn = sum, positive_1L_lgl = FALSE, summarise_1L_lgl = FALSE, 
+    summary_fn = mean, summary_2_fn = sum, tfmn_args_ls = NULL, 
+    tfmn_fn = NULL, tfmn_pattern_1L_chr = "Transformed_{.col}", 
+    type_1L_chr = c("default", "grouped", "summary", "both"), 
+    predictors_chr = character(0)) 
+{
+    forecasts_tb <- names(scenario_forecasts_ls) %>% purrr::map_dfr(~{
+        name_1L_chr <- .x
+        make_forecasts_tb(scenario_forecasts_ls %>% purrr::pluck(name_1L_chr) %>% 
+            purrr::pluck("fabels_ls"), group_by_1L_chr = group_by_1L_chr, 
+            group_fn = group_fn, summary_fn = summary_fn, tfmn_args_ls = tfmn_args_ls, 
+            tfmn_fn = tfmn_fn, tfmn_pattern_1L_chr = tfmn_pattern_1L_chr, 
+            type_1L_chr = type_1L_chr, what_1L_chr = what_1L_chr) %>% 
+            dplyr::select(-tidyselect::any_of(c(predictors_chr, 
+                "0"))) %>% dplyr::rename(Distribution = !!rlang::sym(what_1L_chr), 
+            `:=`(!!rlang::sym(what_1L_chr), .mean)) %>% dplyr::mutate(Scenario = name_1L_chr) %>% 
+            dplyr::relocate(Scenario, .after = .model)
+    })
+    if (summarise_1L_lgl) {
+        forecasts_tb <- forecasts_tb %>% dplyr::rename(.mean = what_1L_chr) %>% 
+            dplyr::select(-c(".model", "Distribution"))
+        if (!is.null(date_start_dtm)) {
+            forecasts_tb <- forecasts_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) >= 
+                date_start_dtm)
+        }
+        if (!is.null(date_end_dtm)) {
+            forecasts_tb <- forecasts_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) <= 
+                date_end_dtm)
+        }
+        forecasts_tb <- forecasts_tb %>% dplyr::group_by(Scenario)
+        if (positive_1L_lgl) {
+            forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), 
+                ~.x %>% purrr::map_dbl(~max(.x, 0))))
+        }
+        forecasts_tb <- forecasts_tb %>% dplyr::summarise(dplyr::across(dplyr::where(is.numeric), 
+            ~summary_2_fn(.x)))
+    }
+    return(forecasts_tb)
 }
 #' Make scenarios tibble
 #' @description make_scenarios_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make scenarios tibble. The function returns Scenarios (a tibble).
