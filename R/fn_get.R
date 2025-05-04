@@ -88,6 +88,42 @@ get_medicare_data <- function (path_1L_chr = character(0), clean_1L_lgl = FALSE,
     medicare_tb <- medicare_df %>% tibble::as_tibble()
     return(medicare_tb)
 }
+#' Get metric for range
+#' @description get_metric_for_range() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get metric for range. The function returns Metric (a double vector of length one).
+#' @param series_tsb Series (a tsibble)
+#' @param metric_1L_chr Metric (a character vector of length one)
+#' @param date_end_dtm Date end (a date vector), Default: NULL
+#' @param date_start_dtm Date start (a date vector), Default: NULL
+#' @param frequency_1L_chr Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal")
+#' @param summary_fn Summary (a function), Default: sum
+#' @return Metric (a double vector of length one)
+#' @rdname get_metric_for_range
+#' @export 
+#' @importFrom tsibble index as_tibble
+#' @importFrom dplyr filter summarise pull
+#' @importFrom rlang sym
+#' @keywords internal
+get_metric_for_range <- function (series_tsb, metric_1L_chr, date_end_dtm = NULL, date_start_dtm = NULL, 
+    frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", 
+        "yearly", "fiscal"), summary_fn = sum) 
+{
+    frequency_1L_chr <- match.arg(frequency_1L_chr)
+    series_tsb <- series_tsb %>% get_tsibble(frequency_1L_chr = frequency_1L_chr, 
+        metrics_chr = metric_1L_chr)
+    date_var_1L_chr <- series_tsb %>% tsibble::index() %>% as.character()
+    series_tb <- series_tsb %>% tsibble::as_tibble()
+    if (!is.null(date_start_dtm)) {
+        series_tb <- series_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) >= 
+            date_start_dtm)
+    }
+    if (!is.null(date_end_dtm)) {
+        series_tb <- series_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) <= 
+            date_end_dtm)
+    }
+    metric_1L_dbl <- series_tb %>% dplyr::summarise(`:=`(!!rlang::sym(metric_1L_chr), 
+        summary_fn(!!rlang::sym(metric_1L_chr)))) %>% dplyr::pull(!!rlang::sym(metric_1L_chr))
+    return(metric_1L_dbl)
+}
 #' Get model predictors
 #' @description get_model_predrs() is a Get function that extracts data from an object. Specifically, this function implements an algorithm to get model predictors. The function returns Model predictors (a list).
 #' @param ts_models_ls Time series models (a list), Default: make_ts_models_ls()

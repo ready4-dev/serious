@@ -170,6 +170,20 @@ make_cases_ls <- function (data_tb, by_1L_chr = "year", case_1L_chr = "UID", dat
         })
     return(cases_ls)
 }
+#' Make composite forecast
+#' @description make_composite_forecast() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make composite forecast. The function returns Forecasts (a tibble).
+#' @param forecasts_tb Forecasts (a tibble)
+#' @return Forecasts (a tibble)
+#' @rdname make_composite_forecast
+#' @export 
+#' @importFrom dplyr summarise across where
+#' @keywords internal
+make_composite_forecast <- function (forecasts_tb) 
+{
+    forecasts_tb <- forecasts_tb %>% dplyr::summarise(dplyr::across(dplyr::where(is.numeric), 
+        ~mean(.x, na.rm = TRUE)))
+    return(forecasts_tb)
+}
 #' Make cost tibble
 #' @description make_cost_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make cost tibble. The function returns Cost (a tibble).
 #' @param data_tsb Data (a tsibble)
@@ -448,6 +462,34 @@ make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_db
         "Total") ~ "Total Cost", T ~ what_1L_chr)) %>% tidyr::pivot_wider(names_from = "Statistic", 
         values_from = "value")
     return(forecast_cost_tb)
+}
+#' Make forecast growth
+#' @description make_forecast_growth() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make forecast growth. The function returns Forecasts (a tibble).
+#' @param forecasts_tb Forecasts (a tibble)
+#' @param reference_1L_chr Reference (a character vector of length one), Default: character(0)
+#' @param reference_1L_dbl Reference (a double vector of length one), Default: numeric(0)
+#' @param tfmn_fn Transformation (a function), Default: scales::percent
+#' @return Forecasts (a tibble)
+#' @rdname make_forecast_growth
+#' @export 
+#' @importFrom scales percent
+#' @importFrom dplyr mutate across where nth filter
+#' @keywords internal
+make_forecast_growth <- function (forecasts_tb, reference_1L_chr = character(0), reference_1L_dbl = numeric(0), 
+    tfmn_fn = scales::percent) 
+{
+    if (!identical(reference_1L_chr, character(0))) {
+        reference_1L_int <- which(forecasts_tb$Scenario == reference_1L_chr)
+        forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), 
+            ~tfmn_fn((.x - dplyr::nth(.x, reference_1L_int))/dplyr::nth(.x, 
+                reference_1L_int)))) %>% dplyr::filter(Scenario != 
+            reference_1L_chr)
+    }
+    else {
+        forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), 
+            ~tfmn_fn((.x - reference_1L_dbl)/reference_1L_dbl)))
+    }
+    return(forecasts_tb)
 }
 #' Make forecasts tibble
 #' @description make_forecasts_tb() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make forecasts tibble. The function returns Forecast (a tibble).
@@ -1089,6 +1131,68 @@ make_sampling_lup <- function (shares_dbl, values_xx, var_nm_1L_chr, prefix_1L_c
         dplyr::everything())
     return(sampling_lup)
 }
+#' Make scaled forecasts
+#' @description make_scaled_forecasts() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make scaled forecasts. The function returns Forecasts (a tibble).
+#' @param forecasts_tb Forecasts (a tibble)
+#' @param predictors_tb Predictors (a tibble)
+#' @param after_1L_chr After (a character vector of length one), Default: character(0)
+#' @param before_1L_chr Before (a character vector of length one), Default: character(0)
+#' @param bind_1L_lgl Bind (a logical vector of length one), Default: TRUE
+#' @param positive_1L_lgl Positive (a logical vector of length one), Default: FALSE
+#' @param prefix_1L_chr Prefix (a character vector of length one), Default: 'scenario_'
+#' @param reference_1L_chr Reference (a character vector of length one), Default: 'Status quo'
+#' @param scale_fn Scale (a function), Default: function(x) x * 1
+#' @param scaled_fn_ls Scaled (a list of functions), Default: NULL
+#' @param tfmn_1_fn Transformation 1 (a function), Default: identity
+#' @param tfmn_2_fn Transformation 2 (a function), Default: identity
+#' @return Forecasts (a tibble)
+#' @rdname make_scaled_forecasts
+#' @export 
+#' @importFrom dplyr bind_rows filter mutate across where case_when row_number nth distinct
+#' @importFrom purrr map_dbl reduce
+#' @keywords internal
+make_scaled_forecasts <- function (forecasts_tb, predictors_tb, after_1L_chr = character(0), 
+    before_1L_chr = character(0), bind_1L_lgl = TRUE, positive_1L_lgl = FALSE, 
+    prefix_1L_chr = "scenario_", reference_1L_chr = "Status quo", 
+    scale_fn = function(x) x * 1, scaled_fn_ls = NULL, tfmn_1_fn = identity, 
+    tfmn_2_fn = identity) 
+{
+    original_tb <- forecasts_tb
+    if (is.null(scaled_fn_ls)) {
+        forecasts_tb <- dplyr::bind_rows(forecasts_tb %>% dplyr::filter(Scenario == 
+            reference_1L_chr), make_forecast_growth(predictors_tb, 
+            reference_1L_chr = reference_1L_chr, tfmn_fn = scale_fn) %>% 
+            update_scenario_names(after_1L_chr = after_1L_chr, 
+                before_1L_chr = before_1L_chr, prefix_1L_chr = prefix_1L_chr, 
+                reference_1L_chr = reference_1L_chr, tfmn_1_fn = tfmn_1_fn, 
+                tfmn_2_fn = tfmn_2_fn))
+        reference_1L_int <- which(forecasts_tb$Scenario == reference_1L_chr)
+        forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), 
+            ~dplyr::case_when(dplyr::row_number() != reference_1L_int ~ 
+                dplyr::nth(.x, reference_1L_int) + .x * dplyr::nth(.x, 
+                  reference_1L_int), T ~ .x)))
+        if (positive_1L_lgl) {
+            forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), 
+                ~.x %>% purrr::map_dbl(~max(.x, 0))))
+        }
+    }
+    else {
+        forecasts_tb <- 1:length(scaled_fn_ls) %>% purrr::reduce(.init = forecasts_tb, 
+            ~make_scaled_forecasts(forecasts_tb = .x, predictors_tb = predictors_tb, 
+                after_1L_chr = paste0(", ", names(scaled_fn_ls)[.y]), 
+                before_1L_chr = before_1L_chr, bind_1L_lgl = TRUE, 
+                positive_1L_lgl = positive_1L_lgl, prefix_1L_chr = prefix_1L_chr, 
+                reference_1L_chr = reference_1L_chr, scale_fn = scaled_fn_ls[[.y]], 
+                scaled_fn_ls = NULL, tfmn_1_fn = tfmn_1_fn, tfmn_2_fn = tfmn_2_fn) %>% 
+                dplyr::distinct())
+    }
+    if (bind_1L_lgl) {
+        forecasts_tb <- dplyr::bind_rows(original_tb, forecasts_tb %>% 
+            dplyr::filter(Scenario != reference_1L_chr)) %>% 
+            dplyr::distinct()
+    }
+    return(forecasts_tb)
+}
 #' Make scenario forecast costs
 #' @description make_scenario_forecast_costs() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make scenario forecast costs. The function returns Forecast costs (a tibble).
 #' @param scenario_forecasts_ls Scenario forecasts (a list)
@@ -1140,6 +1244,7 @@ make_scenario_forecast_costs <- function (scenario_forecasts_ls, unit_costs_tb, 
 #' @description make_scenario_forecasts() is a Make function that creates a new R object. Specifically, this function implements an algorithm to make scenario forecasts. The function returns Forecasts (a tibble).
 #' @param scenario_forecasts_ls Scenario forecasts (a list)
 #' @param what_1L_chr What (a character vector of length one)
+#' @param bind_to_tb Bind to (a tibble), Default: NULL
 #' @param date_end_dtm Date end (a date vector), Default: NULL
 #' @param date_start_dtm Date start (a date vector), Default: NULL
 #' @param date_var_1L_chr Date variable (a character vector of length one), Default: 'Day'
@@ -1158,15 +1263,15 @@ make_scenario_forecast_costs <- function (scenario_forecasts_ls, unit_costs_tb, 
 #' @rdname make_scenario_forecasts
 #' @export 
 #' @importFrom purrr map_dfr pluck map_dbl
-#' @importFrom dplyr select rename mutate relocate filter group_by across where summarise
+#' @importFrom dplyr select rename mutate relocate filter group_by across where summarise bind_rows
 #' @importFrom tidyselect any_of
 #' @importFrom rlang sym
 #' @keywords internal
-make_scenario_forecasts <- function (scenario_forecasts_ls, what_1L_chr, date_end_dtm = NULL, 
-    date_start_dtm = NULL, date_var_1L_chr = "Day", group_by_1L_chr = character(0), 
-    group_fn = sum, positive_1L_lgl = FALSE, summarise_1L_lgl = FALSE, 
-    summary_fn = mean, summary_2_fn = sum, tfmn_args_ls = NULL, 
-    tfmn_fn = NULL, tfmn_pattern_1L_chr = "Transformed_{.col}", 
+make_scenario_forecasts <- function (scenario_forecasts_ls, what_1L_chr, bind_to_tb = NULL, 
+    date_end_dtm = NULL, date_start_dtm = NULL, date_var_1L_chr = "Day", 
+    group_by_1L_chr = character(0), group_fn = sum, positive_1L_lgl = FALSE, 
+    summarise_1L_lgl = FALSE, summary_fn = mean, summary_2_fn = sum, 
+    tfmn_args_ls = NULL, tfmn_fn = NULL, tfmn_pattern_1L_chr = "Transformed_{.col}", 
     type_1L_chr = c("default", "grouped", "summary", "both"), 
     predictors_chr = character(0)) 
 {
@@ -1184,7 +1289,13 @@ make_scenario_forecasts <- function (scenario_forecasts_ls, what_1L_chr, date_en
     })
     if (summarise_1L_lgl) {
         forecasts_tb <- forecasts_tb %>% dplyr::rename(.mean = what_1L_chr) %>% 
-            dplyr::select(-c(".model", "Distribution"))
+            dplyr::select(-c("Distribution"))
+        if ((!is.null(date_start_dtm) | !is.null(date_end_dtm)) & 
+            !date_var_1L_chr %in% names(forecasts_tb)) {
+            forecasts_tb <- forecasts_tb %>% add_temporal_vars(temporal_vars_chr = date_var_1L_chr, 
+                date_var_1L_chr = c(intersect(make_temporal_vars(), 
+                  names(forecasts_tb)), "Date")[1])
+        }
         if (!is.null(date_start_dtm)) {
             forecasts_tb <- forecasts_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) >= 
                 date_start_dtm)
@@ -1193,13 +1304,25 @@ make_scenario_forecasts <- function (scenario_forecasts_ls, what_1L_chr, date_en
             forecasts_tb <- forecasts_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) <= 
                 date_end_dtm)
         }
-        forecasts_tb <- forecasts_tb %>% dplyr::group_by(Scenario)
+        forecasts_tb <- forecasts_tb %>% dplyr::group_by(Scenario, 
+            .model)
         if (positive_1L_lgl) {
             forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric), 
                 ~.x %>% purrr::map_dbl(~max(.x, 0))))
         }
         forecasts_tb <- forecasts_tb %>% dplyr::summarise(dplyr::across(dplyr::where(is.numeric), 
             ~summary_2_fn(.x)))
+    }
+    if (length(unique(forecasts_tb$.model)) == 1) {
+        forecasts_tb <- forecasts_tb %>% dplyr::select(-c(.model))
+    }
+    if (length(unique(forecasts_tb$Scenario)) == 1) {
+        forecasts_tb <- forecasts_tb %>% dplyr::select(-c(Scenario))
+    }
+    forecasts_tb <- forecasts_tb %>% dplyr::relocate(`95%_lower`, 
+        .before = `80%_lower`)
+    if (!is.null(bind_to_tb)) {
+        forecasts_tb <- dplyr::bind_rows(bind_to_tb, forecasts_tb)
     }
     return(forecasts_tb)
 }

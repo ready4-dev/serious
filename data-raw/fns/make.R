@@ -123,6 +123,11 @@ make_cases_ls <- function(data_tb,
                           })
   return(cases_ls)
 }
+make_composite_forecast <- function(forecasts_tb){
+  forecasts_tb <- forecasts_tb %>%
+    dplyr::summarise(dplyr::across(dplyr::where(is.numeric), ~mean(.x, na.rm = TRUE)))
+  return(forecasts_tb)
+}
 make_cost_tb <- function (data_tsb, cost_1L_chr = "Cost",
                           frequency_1L_chr = c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal"), group_by_chr = character(0),
                           group_fn = sum, metrics_chr = make_metric_vars(), temporal_vars_chr = make_temporal_vars(),
@@ -273,6 +278,21 @@ make_forecast_cost_tb <- function (fabels_ls, unit_cost_1L_dbl, fixed_cost_1L_db
                                                                                                                                                                                                                                                                                                  "Total") ~ "Total Cost", T ~ what_1L_chr)) %>% tidyr::pivot_wider(names_from = "Statistic",
                                                                                                                                                                                                                                                                                                                                                                    values_from = "value")
   return(forecast_cost_tb)
+}
+make_forecast_growth <- function(forecasts_tb,
+                                 reference_1L_chr = character(0),
+                                 reference_1L_dbl = numeric(0),
+                                 tfmn_fn = scales::percent){
+  if(!identical(reference_1L_chr, character(0))){
+    reference_1L_int <- which(forecasts_tb$Scenario==reference_1L_chr)
+    forecasts_tb <- forecasts_tb %>%
+      dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~ tfmn_fn((.x- dplyr::nth(.x, reference_1L_int))/dplyr::nth(.x, reference_1L_int)))) %>%
+      dplyr::filter(Scenario != reference_1L_chr)
+  }else{
+    forecasts_tb <- forecasts_tb %>%
+      dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~tfmn_fn((.x - reference_1L_dbl)/reference_1L_dbl)))
+  }
+  return(forecasts_tb)
 }
 make_forecasts_tb <- function(fabels_ls,
                               group_by_1L_chr = character(0),
@@ -730,6 +750,55 @@ make_sampling_lup <- function(shares_dbl,
     dplyr::select(!!rlang::sym(uid_var_nm_1L_chr), dplyr::everything())
   return(sampling_lup)
 }
+make_scaled_forecasts <- function(forecasts_tb,
+                                  predictors_tb,
+                                  after_1L_chr = character(0),
+                                  before_1L_chr = character(0),
+                                  bind_1L_lgl = TRUE,
+                                  positive_1L_lgl = FALSE,
+                                  prefix_1L_chr = "scenario_",
+                                  reference_1L_chr = "Status quo",
+                                  scale_fn = function(x) x * 1,
+                                  scaled_fn_ls = NULL,
+                                  tfmn_1_fn = identity,
+                                  tfmn_2_fn = identity){
+  original_tb <- forecasts_tb
+  if(is.null(scaled_fn_ls)){
+    forecasts_tb <- dplyr::bind_rows(forecasts_tb %>% dplyr::filter(Scenario == reference_1L_chr),
+                                     make_forecast_growth(predictors_tb, reference_1L_chr = reference_1L_chr, tfmn_fn = scale_fn) %>%
+                                       update_scenario_names(after_1L_chr = after_1L_chr, before_1L_chr = before_1L_chr, prefix_1L_chr = prefix_1L_chr,
+                                                             reference_1L_chr = reference_1L_chr, tfmn_1_fn = tfmn_1_fn, tfmn_2_fn = tfmn_2_fn))
+    reference_1L_int <- which(forecasts_tb$Scenario==reference_1L_chr)
+    forecasts_tb <- forecasts_tb %>%
+      dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~ dplyr::case_when(dplyr::row_number() != reference_1L_int ~ dplyr::nth(.x,reference_1L_int) + .x * dplyr::nth(.x,reference_1L_int), T ~ .x)))
+
+    if (positive_1L_lgl) {
+      forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric),
+                                                                   ~.x %>% purrr::map_dbl(~max(.x, 0))))
+    }
+  }else{
+    forecasts_tb <- 1:length(scaled_fn_ls) %>% purrr::reduce(.init = forecasts_tb,
+                                                             ~ make_scaled_forecasts(forecasts_tb = .x,
+                                                                                     predictors_tb = predictors_tb,
+                                                                                     after_1L_chr = paste0(", ", names(scaled_fn_ls)[.y]),
+                                                                                     before_1L_chr = before_1L_chr,
+                                                                                     bind_1L_lgl = TRUE,
+                                                                                     positive_1L_lgl = positive_1L_lgl,
+                                                                                     prefix_1L_chr = prefix_1L_chr,
+                                                                                     reference_1L_chr = reference_1L_chr,
+                                                                                     scale_fn = scaled_fn_ls[[.y]],
+                                                                                     scaled_fn_ls = NULL,
+                                                                                     tfmn_1_fn = tfmn_1_fn,
+                                                                                     tfmn_2_fn = tfmn_2_fn) %>% dplyr::distinct())
+  }
+
+  if(bind_1L_lgl){
+    forecasts_tb <- dplyr::bind_rows(original_tb,
+                                     forecasts_tb %>% dplyr::filter(Scenario != reference_1L_chr)) %>% dplyr::distinct()
+  }
+  return(forecasts_tb)
+
+}
 make_scenario_forecast_costs <- function(scenario_forecasts_ls,
                                          unit_costs_tb,
                                          what_1L_chr,
@@ -767,58 +836,60 @@ make_scenario_forecast_costs <- function(scenario_forecasts_ls,
   }
   return(forecast_costs_tb)
 }
-make_scenario_forecasts <- function(scenario_forecasts_ls,
-                                    what_1L_chr,
-                                    date_end_dtm = NULL,
-                                    date_start_dtm = NULL,
-                                    date_var_1L_chr = "Day",
-                                    group_by_1L_chr = character(0),
-                                    group_fn = sum,
-                                    positive_1L_lgl = FALSE,
-                                    summarise_1L_lgl = FALSE,
-                                    summary_fn = mean,
-                                    summary_2_fn = sum,
-                                    tfmn_args_ls = NULL,
-                                    tfmn_fn = NULL,
-                                    tfmn_pattern_1L_chr = "Transformed_{.col}",
-                                    type_1L_chr = c("default", "grouped", "summary", "both"),
-                                    predictors_chr = character(0)){
+make_scenario_forecasts <- function (scenario_forecasts_ls, what_1L_chr,
+                                     bind_to_tb = NULL,
+                                     date_end_dtm = NULL,
+                                     date_start_dtm = NULL, date_var_1L_chr = "Day", group_by_1L_chr = character(0),
+                                     group_fn = sum, positive_1L_lgl = FALSE, summarise_1L_lgl = FALSE,
+                                     summary_fn = mean, summary_2_fn = sum, tfmn_args_ls = NULL,
+                                     tfmn_fn = NULL, tfmn_pattern_1L_chr = "Transformed_{.col}",
+                                     type_1L_chr = c("default", "grouped", "summary", "both"),
+                                     predictors_chr = character(0))
+{
   forecasts_tb <- names(scenario_forecasts_ls) %>% purrr::map_dfr(~{
     name_1L_chr <- .x
-    make_forecasts_tb(scenario_forecasts_ls %>% purrr::pluck(name_1L_chr) %>% purrr::pluck("fabels_ls"),
-                      group_by_1L_chr = group_by_1L_chr, group_fn = group_fn,
-                      summary_fn = summary_fn, tfmn_args_ls = tfmn_args_ls, tfmn_fn = tfmn_fn, tfmn_pattern_1L_chr = tfmn_pattern_1L_chr,
+    make_forecasts_tb(scenario_forecasts_ls %>% purrr::pluck(name_1L_chr) %>%
+                        purrr::pluck("fabels_ls"), group_by_1L_chr = group_by_1L_chr,
+                      group_fn = group_fn, summary_fn = summary_fn, tfmn_args_ls = tfmn_args_ls,
+                      tfmn_fn = tfmn_fn, tfmn_pattern_1L_chr = tfmn_pattern_1L_chr,
                       type_1L_chr = type_1L_chr, what_1L_chr = what_1L_chr) %>%
-      dplyr::select(-tidyselect::any_of(c(predictors_chr,"0"))) %>%
-      dplyr::rename(Distribution = !!rlang::sym(what_1L_chr),
-                    !!rlang::sym(what_1L_chr) := .mean) %>%
-      dplyr::mutate(Scenario = name_1L_chr) %>%
+      dplyr::select(-tidyselect::any_of(c(predictors_chr,
+                                          "0"))) %>% dplyr::rename(Distribution = !!rlang::sym(what_1L_chr),
+                                                                   `:=`(!!rlang::sym(what_1L_chr), .mean)) %>% dplyr::mutate(Scenario = name_1L_chr) %>%
       dplyr::relocate(Scenario, .after = .model)
-
-
   })
-  if(summarise_1L_lgl){
-    forecasts_tb <- forecasts_tb  %>%
-      dplyr::rename(.mean = what_1L_chr) %>%
-      dplyr::select(-c(".model", "Distribution"))
-    if(!is.null(date_start_dtm)){
-      forecasts_tb <- forecasts_tb  %>%
-        dplyr::filter(!!rlang::sym(date_var_1L_chr) >= date_start_dtm)
+  if (summarise_1L_lgl) {
+    forecasts_tb <- forecasts_tb %>% dplyr::rename(.mean = what_1L_chr) %>%
+      dplyr::select(-c("Distribution"))
+    if((!is.null(date_start_dtm) | !is.null(date_end_dtm)) & !date_var_1L_chr %in% names(forecasts_tb)){
+      forecasts_tb <- forecasts_tb %>% add_temporal_vars(temporal_vars_chr = date_var_1L_chr,
+                                                         date_var_1L_chr = c(intersect(make_temporal_vars(), names(forecasts_tb)), "Date")[1])
     }
-    if(!is.null(date_end_dtm)){
-      forecasts_tb <- forecasts_tb  %>%
-        dplyr::filter(!!rlang::sym(date_var_1L_chr) <= date_end_dtm)
+    if (!is.null(date_start_dtm)) {
+      forecasts_tb <- forecasts_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) >=
+                                                       date_start_dtm)
     }
-    forecasts_tb <- forecasts_tb %>%
-      dplyr::group_by(Scenario)
-    if(positive_1L_lgl){
-      forecasts_tb <- forecasts_tb %>%
-        dplyr::mutate(dplyr::across(dplyr::where(is.numeric),
-                                    ~ .x %>% purrr::map_dbl(~max(.x,0))))
+    if (!is.null(date_end_dtm)) {
+      forecasts_tb <- forecasts_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) <=
+                                                       date_end_dtm)
     }
-    forecasts_tb <- forecasts_tb %>%
-      dplyr::summarise(dplyr::across(dplyr::where(is.numeric),
-                                     ~summary_2_fn(.x)))
+    forecasts_tb <- forecasts_tb %>% dplyr::group_by(Scenario, .model)
+    if (positive_1L_lgl) {
+      forecasts_tb <- forecasts_tb %>% dplyr::mutate(dplyr::across(dplyr::where(is.numeric),
+                                                                   ~.x %>% purrr::map_dbl(~max(.x, 0))))
+    }
+    forecasts_tb <- forecasts_tb %>% dplyr::summarise(dplyr::across(dplyr::where(is.numeric),
+                                                                    ~summary_2_fn(.x)))
+  }
+  if(length(unique(forecasts_tb$.model))==1){
+    forecasts_tb <- forecasts_tb %>% dplyr::select(-c(.model))
+  }
+  if(length(unique(forecasts_tb$Scenario))==1){
+    forecasts_tb <- forecasts_tb %>% dplyr::select(-c(Scenario))
+  }
+  forecasts_tb <- forecasts_tb %>% dplyr::relocate(`95%_lower`, .before = `80%_lower`)
+  if(!is.null(bind_to_tb)){
+    forecasts_tb <- dplyr::bind_rows(bind_to_tb, forecasts_tb)
   }
   return(forecasts_tb)
 }

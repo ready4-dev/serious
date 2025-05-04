@@ -67,6 +67,26 @@ get_medicare_data <- function(path_1L_chr = character(0),
   return(medicare_tb)
 
 }
+get_metric_for_range <- function (series_tsb,
+                                  metric_1L_chr,
+                                  date_end_dtm = NULL,
+                                  date_start_dtm = NULL,
+                                  frequency_1L_chr =  c("daily", "weekly", "monthly", "quarterly", "yearly", "fiscal"),
+                                  summary_fn = sum){
+  frequency_1L_chr <- match.arg(frequency_1L_chr)
+  series_tsb <- series_tsb %>% get_tsibble(frequency_1L_chr = frequency_1L_chr, metrics_chr = metric_1L_chr)
+  date_var_1L_chr <- series_tsb  %>% tsibble::index() %>% as.character()
+  series_tb <- series_tsb  %>% tsibble::as_tibble()
+  if (!is.null(date_start_dtm)) {
+    series_tb <- series_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) >=  date_start_dtm)
+  }
+  if (!is.null(date_end_dtm)) {
+    series_tb <- series_tb %>% dplyr::filter(!!rlang::sym(date_var_1L_chr) <= date_end_dtm)
+  }
+  metric_1L_dbl <- series_tb %>%
+    dplyr::summarise(!!rlang::sym(metric_1L_chr) := summary_fn(!!rlang::sym(metric_1L_chr))) %>% dplyr::pull(!!rlang::sym(metric_1L_chr))
+  return(metric_1L_dbl)
+}
 get_model_predrs <- function(ts_models_ls = make_ts_models_ls()){
   predictors_chr <- cumulatives_chr <- contributors_chr <- joins_chr <-character(0)
   if(!identical(ts_models_ls$predictor_args_ls, make_tfmn_args_ls())){

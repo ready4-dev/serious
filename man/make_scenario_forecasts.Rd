@@ -7,6 +7,7 @@
 make_scenario_forecasts(
   scenario_forecasts_ls,
   what_1L_chr,
+  bind_to_tb = NULL,
   date_end_dtm = NULL,
   date_start_dtm = NULL,
   date_var_1L_chr = "Day",
@@ -27,6 +28,8 @@ make_scenario_forecasts(
 \item{scenario_forecasts_ls}{Scenario forecasts (a list)}
 
 \item{what_1L_chr}{What (a character vector of length one)}
+
+\item{bind_to_tb}{Bind to (a tibble), Default: NULL}
 
 \item{date_end_dtm}{Date end (a date vector), Default: NULL}
 
