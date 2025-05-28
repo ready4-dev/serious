@@ -114,14 +114,16 @@ transform_output <- function (output_ls)
 #' @description transform_to_mdl_input() is a Transform function that edits an object in such a way that core object attributes - e.g. shape, dimensions, elements, type - are altered. Specifically, this function implements an algorithm to transform to model input. The function returns Data (a tsibble).
 #' @param data_xx Data (an output object of multiple potential types)
 #' @param ts_models_ls Time series models (a list), Default: make_ts_models_ls()
+#' @param force_min_ls Force minimum (a list), Default: NULL
 #' @return Data (a tsibble)
 #' @rdname transform_to_mdl_input
 #' @export 
 #' @importFrom assertthat assert_that
-#' @importFrom rlang exec
-#' @importFrom dplyr left_join
+#' @importFrom rlang exec sym
+#' @importFrom dplyr left_join mutate
+#' @importFrom purrr reduce pluck map_vec
 #' @keywords internal
-transform_to_mdl_input <- function (data_xx, ts_models_ls = make_ts_models_ls()) 
+transform_to_mdl_input <- function (data_xx, ts_models_ls = make_ts_models_ls(), force_min_ls = NULL) 
 {
     assertthat::assert_that(!identical(ts_models_ls, make_ts_models_ls()))
     args_ls <- ts_models_ls$args_ls
@@ -145,6 +147,15 @@ transform_to_mdl_input <- function (data_xx, ts_models_ls = make_ts_models_ls())
         join_to_tsb <- rlang::exec(get_tsibble, data_xx = join_to_xx, 
             !!!join_to_args_ls)
         data_tsb <- dplyr::left_join(data_tsb, join_to_tsb)
+    }
+    if (!is.null(force_min_ls)) {
+        data_tsb <- purrr::reduce(1:length(force_min_ls), .init = data_tsb, 
+            ~{
+                min_1L_dbl <- force_min_ls %>% purrr::pluck(.y)
+                .x %>% dplyr::mutate(`:=`(!!rlang::sym(names(force_min_ls)[.y]), 
+                  !!rlang::sym(names(force_min_ls)[.y]) %>% purrr::map_vec(~max(.x, 
+                    min_1L_dbl))))
+            })
     }
     return(data_tsb)
 }

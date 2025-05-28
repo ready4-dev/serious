@@ -4,12 +4,18 @@
 \alias{transform_to_mdl_input}
 \title{Transform to model input}
 \usage{
-transform_to_mdl_input(data_xx, ts_models_ls = make_ts_models_ls())
+transform_to_mdl_input(
+  data_xx,
+  ts_models_ls = make_ts_models_ls(),
+  force_min_ls = NULL
+)
 }
 \arguments{
 \item{data_xx}{Data (an output object of multiple potential types)}
 
 \item{ts_models_ls}{Time series models (a list), Default: make_ts_models_ls()}
+
+\item{force_min_ls}{Force minimum (a list), Default: NULL}
 }
 \value{
 Data (a tsibble)

@@ -8,11 +8,13 @@ make_scaled_forecasts(
   forecasts_tb,
   predictors_tb,
   after_1L_chr = character(0),
+  base_1L_dbl = numeric(0),
   before_1L_chr = character(0),
   bind_1L_lgl = TRUE,
   positive_1L_lgl = FALSE,
   prefix_1L_chr = "scenario_",
-  reference_1L_chr = "Status quo",
+  reference_1L_chr = character(0),
+  reference_1L_dbl = numeric(0),
   scale_fn = function(x) x * 1,
   scaled_fn_ls = NULL,
   tfmn_1_fn = identity,
@@ -26,6 +28,8 @@ make_scaled_forecasts(
 
 \item{after_1L_chr}{After (a character vector of length one), Default: character(0)}
 
+\item{base_1L_dbl}{Base (a double vector of length one), Default: numeric(0)}
+
 \item{before_1L_chr}{Before (a character vector of length one), Default: character(0)}
 
 \item{bind_1L_lgl}{Bind (a logical vector of length one), Default: TRUE}
@@ -34,7 +38,9 @@ make_scaled_forecasts(
 
 \item{prefix_1L_chr}{Prefix (a character vector of length one), Default: 'scenario_'}
 
-\item{reference_1L_chr}{Reference (a character vector of length one), Default: 'Status quo'}
+\item{reference_1L_chr}{Reference (a character vector of length one), Default: character(0)}
+
+\item{reference_1L_dbl}{Reference (a double vector of length one), Default: numeric(0)}
 
 \item{scale_fn}{Scale (a function), Default: function(x) x * 1}
 

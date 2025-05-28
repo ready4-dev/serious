@@ -4,10 +4,24 @@
 \alias{make_composite_forecast}
 \title{Make composite forecast}
 \usage{
-make_composite_forecast(forecasts_tb)
+make_composite_forecast(
+  forecasts_tb,
+  check_1L_lgl = F,
+  group_by_1L_chr = character(0),
+  unweighted_chr = character(0),
+  weights_dbl = numeric(0)
+)
 }
 \arguments{
 \item{forecasts_tb}{Forecasts (a tibble)}
+
+\item{check_1L_lgl}{Check (a logical vector of length one), Default: F}
+
+\item{group_by_1L_chr}{Group by (a character vector of length one), Default: character(0)}
+
+\item{unweighted_chr}{Unweighted (a character vector), Default: character(0)}
+
+\item{weights_dbl}{Weights (a double vector), Default: numeric(0)}
 }
 \value{
 Forecasts (a tibble)

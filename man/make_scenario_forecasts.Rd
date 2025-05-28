@@ -8,6 +8,7 @@ make_scenario_forecasts(
   scenario_forecasts_ls,
   what_1L_chr,
   bind_to_tb = NULL,
+  bound_models_chr = character(0),
   date_end_dtm = NULL,
   date_start_dtm = NULL,
   date_var_1L_chr = "Day",
@@ -30,6 +31,8 @@ make_scenario_forecasts(
 \item{what_1L_chr}{What (a character vector of length one)}
 
 \item{bind_to_tb}{Bind to (a tibble), Default: NULL}
+
+\item{bound_models_chr}{Bound models (a character vector), Default: character(0)}
 
 \item{date_end_dtm}{Date end (a date vector), Default: NULL}
 

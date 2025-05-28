@@ -6,6 +6,9 @@
 \usage{
 make_forecast_growth(
   forecasts_tb,
+  add_to_reference_1L_chr = character(0),
+  group_by_1L_chr = character(0),
+  pooled_mdl_1L_chr = "Pooled",
   reference_1L_chr = character(0),
   reference_1L_dbl = numeric(0),
   tfmn_fn = scales::percent
@@ -13,6 +16,12 @@ make_forecast_growth(
 }
 \arguments{
 \item{forecasts_tb}{Forecasts (a tibble)}
+
+\item{add_to_reference_1L_chr}{Add to reference (a character vector of length one), Default: character(0)}
+
+\item{group_by_1L_chr}{Group by (a character vector of length one), Default: character(0)}
+
+\item{pooled_mdl_1L_chr}{Pooled model (a character vector of length one), Default: 'Pooled'}
 
 \item{reference_1L_chr}{Reference (a character vector of length one), Default: character(0)}
 
