@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">serious</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.0.1.9000</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.0.1.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,23 +44,27 @@
 <span>  collapse_1L_lgl <span class="op">=</span> <span class="cn">T</span>,</span>
 <span>  cumulatives_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  fill_gaps_1L_lgl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  force_min_ls <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  frequency_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"daily"</span>, <span class="st">"weekly"</span>, <span class="st">"monthly"</span>, <span class="st">"quarterly"</span>, <span class="st">"yearly"</span><span class="op">)</span>,</span>
 <span>  index_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  growth_args_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  join_to_args_ls <span class="op">=</span> <span class="fu"><a href="make_tfmn_args_ls.html">make_tfmn_args_ls</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  key_vars_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  key_totals_ls <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  metrics_chr <span class="op">=</span> <span class="fu"><a href="make_metric_vars.html">make_metric_vars</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  models_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Mean"</span>, <span class="st">"Naïve"</span>, <span class="st">"Seasonal naïve"</span>, <span class="st">"Drift"</span>, <span class="st">"Trend"</span>, <span class="st">"LMTS"</span>, <span class="st">"ETS"</span>,</span>
-<span>    <span class="st">"ARIMA"</span>, <span class="st">"NENTAR"</span>, <span class="st">"Prophet"</span>, <span class="st">"Reg_ARIMA"</span>, <span class="st">"Reg_Prophet"</span>, <span class="st">"Reg_TSLM"</span><span class="op">)</span>,</span>
+<span>    <span class="st">"ARIMA"</span>, <span class="st">"NENTAR"</span>, <span class="st">"Prophet"</span>, <span class="st">"Reg_ARIMA"</span>, <span class="st">"Reg_NNETAR"</span>, <span class="st">"Reg_Prophet"</span>, <span class="st">"Reg_Trend"</span>,</span>
+<span>    <span class="st">"Reg_TSLM"</span><span class="op">)</span>,</span>
 <span>  model_type_1L_chr <span class="op">=</span> <span class="st">"multiplicative"</span>,</span>
 <span>  order_1L_int <span class="op">=</span> <span class="fl">2</span>,</span>
-<span>  period_1L_int <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  period_1L_int <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  predictors_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  prefix_1L_chr <span class="op">=</span> <span class="st">"Cumulative"</span>,</span>
 <span>  stepwise_1L_lgl <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  terms_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  terms_ls <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  test_1L_int <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  tfmns_chr <span class="op">=</span> <span class="st">"identity"</span>,</span>
 <span>  type_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"totals"</span>, <span class="st">"key"</span><span class="op">)</span>,</span>
 <span>  what_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -90,12 +94,20 @@
 <dd><p>Fill gaps (a logical vector of length one), Default: FALSE</p></dd>
 
 
+<dt id="arg-force-min-ls">force_min_ls<a class="anchor" aria-label="anchor" href="#arg-force-min-ls"></a></dt>
+<dd><p>Force minimum (a list), Default: NULL</p></dd>
+
+
 <dt id="arg-frequency-l-chr">frequency_1L_chr<a class="anchor" aria-label="anchor" href="#arg-frequency-l-chr"></a></dt>
 <dd><p>Frequency (a character vector of length one), Default: c("daily", "weekly", "monthly", "quarterly", "yearly")</p></dd>
 
 
 <dt id="arg-index-l-chr">index_1L_chr<a class="anchor" aria-label="anchor" href="#arg-index-l-chr"></a></dt>
 <dd><p>Index (a character vector of length one), Default: character(0)</p></dd>
+
+
+<dt id="arg-growth-args-l-chr">growth_args_1L_chr<a class="anchor" aria-label="anchor" href="#arg-growth-args-l-chr"></a></dt>
+<dd><p>Growth arguments (a character vector of length one), Default: character(0)</p></dd>
 
 
 <dt id="arg-join-to-args-ls">join_to_args_ls<a class="anchor" aria-label="anchor" href="#arg-join-to-args-ls"></a></dt>
@@ -116,8 +128,8 @@
 
 <dt id="arg-models-chr">models_chr<a class="anchor" aria-label="anchor" href="#arg-models-chr"></a></dt>
 <dd><p>Models (a character vector), Default: c("Mean", "Naïve", "Seasonal naïve", "Drift", "Trend", "LMTS",
-"ETS", "ARIMA", "NENTAR", "Prophet", "Reg_ARIMA", "Reg_Prophet",
-"Reg_TSLM")</p></dd>
+"ETS", "ARIMA", "NENTAR", "Prophet", "Reg_ARIMA", "Reg_NNETAR",
+"Reg_Prophet", "Reg_Trend", "Reg_TSLM")</p></dd>
 
 
 <dt id="arg-model-type-l-chr">model_type_1L_chr<a class="anchor" aria-label="anchor" href="#arg-model-type-l-chr"></a></dt>
@@ -129,7 +141,7 @@
 
 
 <dt id="arg-period-l-int">period_1L_int<a class="anchor" aria-label="anchor" href="#arg-period-l-int"></a></dt>
-<dd><p>Period (an integer vector of length one), Default: 12</p></dd>
+<dd><p>Period (an integer vector of length one), Default: integer(0)</p></dd>
 
 
 <dt id="arg-predictors-chr">predictors_chr<a class="anchor" aria-label="anchor" href="#arg-predictors-chr"></a></dt>
@@ -156,6 +168,10 @@
 <dd><p>Test (an integer vector of length one), Default: integer(0)</p></dd>
 
 
+<dt id="arg-tfmns-chr">tfmns_chr<a class="anchor" aria-label="anchor" href="#arg-tfmns-chr"></a></dt>
+<dd><p>Transformations (a character vector), Default: 'identity'</p></dd>
+
+
 <dt id="arg-type-l-chr">type_1L_chr<a class="anchor" aria-label="anchor" href="#arg-type-l-chr"></a></dt>
 <dd><p>Type (a character vector of length one), Default: c("totals", "key")</p></dd>
 
@@ -178,7 +194,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.2.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>

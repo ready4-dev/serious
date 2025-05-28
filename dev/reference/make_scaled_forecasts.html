@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">serious</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.0.1.9000</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.0.1.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,11 +42,13 @@
 <span>  <span class="va">forecasts_tb</span>,</span>
 <span>  <span class="va">predictors_tb</span>,</span>
 <span>  after_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  base_1L_dbl <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  before_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  bind_1L_lgl <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  positive_1L_lgl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  prefix_1L_chr <span class="op">=</span> <span class="st">"scenario_"</span>,</span>
-<span>  reference_1L_chr <span class="op">=</span> <span class="st">"Status quo"</span>,</span>
+<span>  reference_1L_chr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  reference_1L_dbl <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  scale_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">*</span> <span class="fl">1</span>,</span>
 <span>  scaled_fn_ls <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tfmn_1_fn <span class="op">=</span> <span class="va">identity</span>,</span>
@@ -70,6 +72,10 @@
 <dd><p>After (a character vector of length one), Default: character(0)</p></dd>
 
 
+<dt id="arg-base-l-dbl">base_1L_dbl<a class="anchor" aria-label="anchor" href="#arg-base-l-dbl"></a></dt>
+<dd><p>Base (a double vector of length one), Default: numeric(0)</p></dd>
+
+
 <dt id="arg-before-l-chr">before_1L_chr<a class="anchor" aria-label="anchor" href="#arg-before-l-chr"></a></dt>
 <dd><p>Before (a character vector of length one), Default: character(0)</p></dd>
 
@@ -87,7 +93,11 @@
 
 
 <dt id="arg-reference-l-chr">reference_1L_chr<a class="anchor" aria-label="anchor" href="#arg-reference-l-chr"></a></dt>
-<dd><p>Reference (a character vector of length one), Default: 'Status quo'</p></dd>
+<dd><p>Reference (a character vector of length one), Default: character(0)</p></dd>
+
+
+<dt id="arg-reference-l-dbl">reference_1L_dbl<a class="anchor" aria-label="anchor" href="#arg-reference-l-dbl"></a></dt>
+<dd><p>Reference (a double vector of length one), Default: numeric(0)</p></dd>
 
 
 <dt id="arg-scale-fn">scale_fn<a class="anchor" aria-label="anchor" href="#arg-scale-fn"></a></dt>
@@ -120,7 +130,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.2.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>
