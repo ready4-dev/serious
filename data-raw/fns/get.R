@@ -326,13 +326,13 @@ get_start_end_dates <- function(financial_yrs_chr,
                                 if(single_1L_lgl){
                                   start_end_yrs_chr <- paste0(yr_pfx_1L_chr,.x %>% stringr::str_sub(start = 3L) %>% stringr::str_split_1("-"))
                                   month_years_chr <- start_end_yrs_chr %>% purrr::map2_chr(start_end_months_chr,
-                                                                                           ~paste0(.y,"-",start_end_yrs_chr[ifelse(.y %in% yr_two_months_ch, 2, 1)]))
+                                                                                           ~paste0(.y,"-",start_end_yrs_chr[ifelse(.y %in% yr_two_months_chr, 2, 1)]))
                                 }else{
                                   start_end_yrs_dbl <- paste0(yr_pfx_1L_chr,.x %>% stringr::str_sub(start = 4L) %>% stringr::str_split_1("-")) %>% as.numeric()
                                   start_end_yrs_ls <- list(start_chr = c(start_end_yrs_dbl[1], start_end_yrs_dbl[1]+1) %>% as.character(),
                                                            end_chr = c(start_end_yrs_dbl[2]-1, start_end_yrs_dbl[2]) %>% as.character())
                                   month_years_chr <- start_end_yrs_ls %>% purrr::map2_chr(start_end_months_chr,
-                                                                                          ~ paste0(.y,"-",.x[ifelse(.y %in% yr_two_months_ch, 2, 1)])) %>% unname()
+                                                                                          ~ paste0(.y,"-",.x[ifelse(.y %in% yr_two_months_chr, 2, 1)])) %>% unname()
                                 }
 
                                 ifelse(what_1L_chr == "start", month_years_chr[1] %>% lubridate::my() %>% lubridate::floor_date(unit = "months") %>% as.character(),
